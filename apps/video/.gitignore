@@ -2,3 +2,5 @@ dist/
 output/*.mp4
 output/*.mov
 output/*.webm
+demo/workspace/
+demo/raw/

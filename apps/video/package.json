@@ -3,8 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "bgm": "node scripts/bgm.mjs",
+    "bgm:teaser": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bgm-teaser.mjs",
     "render": "tsc && node dist/render.js",
     "start": "revideo editor --projectFile ./src/project.tsx",
+    "start:new": "revideo editor --projectFile ./src/whats-new.tsx",
+    "start:full": "revideo editor --projectFile ./src/full-intro.tsx",
+    "start:teaser": "revideo editor --projectFile ./src/teaser.tsx",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

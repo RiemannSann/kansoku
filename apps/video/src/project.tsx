@@ -9,78 +9,7 @@ import {
   sequence,
   waitFor,
 } from '@revideo/core';
-
-const C = {
-  bg: '#080A0C',
-  border: '#30353A',
-  dim: '#7D878F',
-  grid: '#1B2024',
-  paper: '#E7ECEF',
-  red: '#FF5B5B',
-  teal: '#2BC3B4',
-  yellow: '#F7C843',
-};
-
-const font = 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif';
-const mono = 'DIN Alternate, SFMono-Regular, Menlo, monospace';
-
-function Label({ accent = C.yellow, code, text }: { accent?: string; code: string; text: string }) {
-  return (
-    <Layout layout direction={'row'} alignItems={'center'} gap={16}>
-      <Rect width={8} height={8} fill={accent} />
-      <Txt
-        text={code}
-        fontFamily={mono}
-        fontSize={21}
-        fontWeight={700}
-        letterSpacing={3}
-        fill={accent}
-      />
-      <Line
-        points={[
-          [0, 0],
-          [68, 0],
-        ]}
-        stroke={C.border}
-        lineWidth={1}
-      />
-      <Txt text={text} fontFamily={font} fontSize={23} fill={C.dim} />
-    </Layout>
-  );
-}
-
-function Pill({ accent = C.teal, text }: { accent?: string; text: string }) {
-  return (
-    <Rect padding={[12, 20]} fill={'#0B0E10E8'} stroke={accent} lineWidth={1} radius={4}>
-      <Txt text={text} fontFamily={font} fontSize={22} fontWeight={600} fill={C.paper} />
-    </Rect>
-  );
-}
-
-function Corner({
-  x,
-  y,
-  flipX = 1,
-  flipY = 1,
-}: {
-  x: number;
-  y: number;
-  flipX?: number;
-  flipY?: number;
-}) {
-  return (
-    <Line
-      position={[x, y]}
-      points={[
-        [0, 32 * flipY],
-        [0, 0],
-        [32 * flipX, 0],
-      ]}
-      stroke={C.yellow}
-      lineWidth={2}
-    />
-  );
-}
+import { C, Corner, Grid, Label, Pill, font, mono } from './components';
 
 const mainScene = makeScene2D('kansoku-story-recut', function* (view) {
   const gridOpacity = createSignal(0.45);
@@ -118,30 +47,7 @@ const mainScene = makeScene2D('kansoku-story-recut', function* (view) {
     <>
       <Audio src={'/audio/observed-path.mp3'} play volume={3.2} />
 
-      <Layout opacity={gridOpacity}>
-        {Array.from({ length: 17 }, (_, index) => (
-          <Line
-            key={`v-${index}`}
-            points={[
-              [-960 + index * 120, -540],
-              [-960 + index * 120, 540],
-            ]}
-            stroke={C.grid}
-            lineWidth={1}
-          />
-        ))}
-        {Array.from({ length: 10 }, (_, index) => (
-          <Line
-            key={`h-${index}`}
-            points={[
-              [-960, -540 + index * 120],
-              [960, -540 + index * 120],
-            ]}
-            stroke={C.grid}
-            lineWidth={1}
-          />
-        ))}
-      </Layout>
+      <Grid opacity={gridOpacity} />
 
       <Layout ref={hook}>
         <Img ref={hookImg} src={'/captures/cockpit-live.png'} width={3200} x={-620} y={88} />

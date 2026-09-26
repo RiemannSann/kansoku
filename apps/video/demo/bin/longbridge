@@ -1,0 +1,35 @@
+#!/bin/bash
+# Stand-in longbridge CLI for recording the product video: market data passes
+# through to the real CLI, anything that reads or changes the account does not.
+set -euo pipefail
+
+real="${LONGBRIDGE_REAL_CLI:-/opt/homebrew/bin/longbridge}"
+
+case "${1:-}" in
+  positions | fund-positions)
+    echo '[]'
+    ;;
+  portfolio)
+    echo '{"overview":{"total_asset":"0","market_cap":"0","total_cash":"0","total_pl":"0","total_today_pl":"0","currency":"USD"},"holdings":[]}'
+    ;;
+  watchlist)
+    if [ "$#" -gt 1 ] && [ "${2:-}" != "--format" ]; then
+      echo 'demo: watchlist is read-only' >&2
+      exit 1
+    fi
+    echo '[{"id":"demo","name":"Semis","securities":[{"symbol":"MU.US"},{"symbol":"NVDA.US"},{"symbol":"TSM.US"},{"symbol":"SMH.US"},{"symbol":"AVGO.US"}]}]'
+    ;;
+  auth)
+    if [ "${2:-}" = "status" ]; then exec "$real" "$@"; fi
+    echo 'demo: auth changes are disabled while recording' >&2
+    exit 1
+    ;;
+  assets | statement | order | cash-flow | max-qty | profit-analysis | alert | dca | grid | \
+    ipo | bank-cards | withdrawals | deposits | sharelist | agent | ai | acp | tui)
+    echo "demo: account command '$1' is disabled while recording" >&2
+    exit 1
+    ;;
+  *)
+    exec "$real" "$@"
+    ;;
+esac

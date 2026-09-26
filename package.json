@@ -35,7 +35,10 @@
     "typecheck": "pnpm -r typecheck",
     "typecheck:desktop": "pnpm --filter @kansoku/desktop typecheck",
     "video:dev": "pnpm --filter @kansoku/video start",
-    "video:render": "pnpm --filter @kansoku/video render"
+    "video:render": "pnpm --filter @kansoku/video render",
+    "video:render:new": "pnpm --filter @kansoku/video render whats-new",
+    "video:render:full": "pnpm --filter @kansoku/video render full",
+    "video:render:teaser": "pnpm --filter @kansoku/video render teaser"
   },
   "devDependencies": {
     "@lobehub/eslint-config": "^2.1.5",

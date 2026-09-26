@@ -28,6 +28,15 @@ pnpm video:render
 
 成片写入 `apps/video/output/kansoku-product-intro.mp4`。
 
+另一支是 v0.43 新功能发布片（`src/whats-new.tsx`，设计见 `docs/superpowers/specs/2026-09-26-whats-new-043-video-design.md`）：
+
+```bash
+pnpm --filter @kansoku/video start:new
+pnpm video:render:new
+```
+
+成片写入 `apps/video/output/kansoku-whats-new-0.43.mp4`，渲染完会用本机 `ffmpeg` 给结尾音乐加 1.2 秒淡出。
+
 ## 素材边界
 
 - `public/captures/cockpit-live.png` 来自当前源码运行的真实桌面 App。
@@ -35,3 +44,26 @@ pnpm video:render
 - `public/captures/app-*.webp` 来自仓库内已公开的产品素材。
 - 不使用包含真实持仓、账户金额或本地 AI 费用的截图。
 - 视频源码可以版本化；渲染成片默认不进入 Git。
+
+## 完整介绍片（MU 财报周）
+
+设计见 `docs/superpowers/specs/2026-09-26-full-intro-video-design.md`，代码在 `src/full-intro.tsx` 和 `src/full/`（每段一个文件）。
+
+```bash
+pnpm --filter @kansoku/video start:full
+pnpm video:render:full
+```
+
+成片写入 `apps/video/output/kansoku-full-intro.mp4`。素材都在演示环境里拍：`demo/start.sh` 用替身长桥 CLI（不读持仓和账户）和一个干净的工作区启动开发版，原始录屏和数据放在 `demo/raw/`（不进 git）。
+
+## 预告短片（一镜到底 + 卡点爆发）
+
+设计见 `docs/superpowers/specs/2026-09-26-teaser-video-design.md`，代码在 `src/teaser.tsx` 和 `src/teaser/`。36 秒，给 X 时间线用。
+
+```bash
+pnpm --filter @kansoku/video bgm:teaser   # 重新合成音乐
+pnpm --filter @kansoku/video start:teaser
+pnpm video:render:teaser
+```
+
+成片写入 `apps/video/output/kansoku-teaser.mp4`。画面切点和音乐鼓点都从 `src/teaser/cues.ts` 取时间（120 BPM，一拍 15 帧），改节奏只改这一个文件，然后重新合成音乐。开头的 MU 日线是 `longbridge kline MU.US --period day --count 250` 拉的真实数据，导出在 `src/teaser/mu-daily.ts`。
