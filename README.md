@@ -8,6 +8,8 @@
 
 **Kansoku（観測）** 是一个 macOS 桌面应用：行情从你自己的长桥账户拉，指标全部本地实算，AI 用你自己配置的模型盯盘、答疑、改研究稿，结论落成本地文件。数据和 key 都不出你的机器。
 
+https://github.com/user-attachments/assets/3ab59426-a07b-432a-bc83-bce6f723effe
+
 ![Kansoku 个股驾驶舱](https://github.com/Innei/kansoku/releases/download/web-preview/app-cockpit.png)
 
 ## 下载安装
