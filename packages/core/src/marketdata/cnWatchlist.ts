@@ -25,9 +25,11 @@ export function normalizeCnSymbol(raw: string): string | null {
   match = /^(\d{6})$/.exec(text);
   if (!match) return null;
   const code = match[1]!;
-  // 6 开头沪市（含科创板 688），0 / 3 开头深市（含创业板）；北交所等其它代码米筐这边不接
-  if (code.startsWith('6')) return `${code}.SH`;
-  if (code.startsWith('0') || code.startsWith('3')) return `${code}.SZ`;
+  // 6 开头沪市股票（含科创板 688）、5 开头沪市基金 / ETF、11 开头沪市可转债；
+  // 0 / 3 开头深市股票（含创业板）、12 开头深市可转债、15 / 16 / 18 开头深市基金 / ETF。
+  // 北交所（4 / 8 / 92 开头）等其它代码米筐这边不接
+  if (/^(6|5|11)/.test(code)) return `${code}.SH`;
+  if (/^(0|3|12|15|16|18)/.test(code)) return `${code}.SZ`;
   return null;
 }
 

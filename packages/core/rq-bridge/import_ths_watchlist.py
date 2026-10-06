@@ -61,9 +61,10 @@ def archived_payloads(path: Path) -> list[bytes]:
 def symbol_of(code: str) -> str | None:
     if len(code) != 6 or not code.isdigit():
         return None  # 期货、指数代码等
-    if code.startswith("6"):
+    # 和 cnWatchlist.ts 的 normalizeCnSymbol 保持一致：股票、ETF / 基金、可转债
+    if code.startswith(("6", "5", "11")):
         return f"{code}.SH"
-    if code.startswith(("0", "3")):
+    if code.startswith(("0", "3", "12", "15", "16", "18")):
         return f"{code}.SZ"
     return None  # 北交所等，米筐这边不接
 

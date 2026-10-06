@@ -280,6 +280,8 @@ describe('cn watchlist file', () => {
       '600519.SH # 重复',
       'IF9999',
       '830799',
+      '920118',
+      '510300 159915 113052 123107',
       '',
     ].join('\n');
     expect(parseCnWatchlist(text)).toEqual([
@@ -288,6 +290,10 @@ describe('cn watchlist file', () => {
       '300750.SZ',
       '688981.SH',
       '002594.SZ',
+      '510300.SH',
+      '159915.SZ',
+      '113052.SH',
+      '123107.SZ',
     ]);
   });
 
@@ -306,9 +312,17 @@ describe('cn watchlist file', () => {
       .spyOn(longbridgeProvider, 'getWatchlistSymbols')
       .mockResolvedValue(['AAPL.US', '600519.SH']);
     expect(hasAnyWatchlist()).toBe(true);
-    expect(await readAllWatchlists()).toEqual(['AAPL.US', '600519.SH', '300750.SZ']);
+    expect(await readAllWatchlists()).toEqual({
+      symbols: ['AAPL.US', '600519.SH', '300750.SZ'],
+      attempted: 2,
+      failures: [],
+    });
 
     longbridgeWatchlist.mockRejectedValue(new Error('longbridge not logged in'));
-    expect(await readAllWatchlists()).toEqual(['600519.SH', '300750.SZ']);
+    expect(await readAllWatchlists()).toEqual({
+      symbols: ['600519.SH', '300750.SZ'],
+      attempted: 2,
+      failures: ['longbridge watchlist — longbridge not logged in'],
+    });
   });
 });
