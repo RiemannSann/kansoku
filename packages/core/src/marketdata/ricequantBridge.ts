@@ -36,7 +36,9 @@ export function ricequantConfig(env: NodeJS.ProcessEnv = process.env): Ricequant
   return {
     python: expandHome(env.RQ_PYTHON || 'python3'),
     script: expandHome(
-      env.RQ_BRIDGE_PATH || join(PROJECT_ROOT, 'packages', 'core', 'rq-bridge', 'rq_bridge.py'),
+      env.RQ_BRIDGE_PATH ||
+        env.KANSOKU_BUNDLED_RQ_BRIDGE ||
+        join(PROJECT_ROOT, 'packages', 'core', 'rq-bridge', 'rq_bridge.py'),
     ),
     licenseFile: expandHome(env.RQ_LICENSE_FILE || DEFAULT_LICENSE_FILE),
   };
@@ -67,6 +69,7 @@ export class RicequantBridge {
   private child: ChildProcessWithoutNullStreams | null = null;
   private pending = new Map<number, Pending>();
   private nextId = 1;
+  private lastOutputAt = 0;
 
   constructor(
     private readonly config: () => RicequantBridgeConfig = () => ricequantConfig(),
@@ -87,6 +90,11 @@ export class RicequantBridge {
         reject(
           new RicequantBridgeError(`米筐 ${method} 超时（${this.timeoutMs}ms）`, 'BRIDGE_TIMEOUT'),
         );
+        // 桥是一条一条串行处理的：整段超时时间里一行输出都没有，说明进程卡死了，
+        // 后面的请求只会排队超时。杀掉它，下一次调用会重新拉起。
+        if (this.child === child && Date.now() - this.lastOutputAt >= this.timeoutMs) {
+          this.discard(child, `${method} 超时无响应`);
+        }
       }, this.timeoutMs);
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer });
       child.stdin.write(`${JSON.stringify({ id, method, params })}\n`);
@@ -104,6 +112,7 @@ export class RicequantBridge {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.child = child;
+    this.lastOutputAt = Date.now();
 
     createInterface({ input: child.stdout }).on('line', (line) => this.handleLine(line));
     createInterface({ input: child.stderr }).on('line', (line) => {
@@ -121,6 +130,7 @@ export class RicequantBridge {
   }
 
   private handleLine(line: string): void {
+    this.lastOutputAt = Date.now();
     let message: { id?: number; ok?: boolean; data?: unknown; error?: string };
     try {
       message = JSON.parse(line);
@@ -144,6 +154,15 @@ export class RicequantBridge {
       pending.reject(error);
       this.pending.delete(id);
     }
+  }
+
+  private discard(child: ChildProcessWithoutNullStreams, reason: string): void {
+    if (this.child !== child) return;
+    this.child = null;
+    console.warn(`[rq-bridge] restarting: ${reason}`);
+    this.failAll(new RicequantBridgeError(`米筐桥重启：${reason}`, 'BRIDGE_UNAVAILABLE'));
+    child.stdin.end();
+    child.kill();
   }
 
   close(): void {

@@ -45,8 +45,9 @@ if (isPackaged) {
   process.env.TRADE_MIGRATIONS_DIR = join(process.resourcesPath, 'drizzle');
   process.env.TRADE_SKILLS_DIR = bundledSkillsPath(process.resourcesPath);
   process.env.KANSOKU_DB_PATH = databasePath;
-  // 米筐 A 股行情桥随 App 打进 Resources/rq-bridge，由用户自己的 Python（RQ_PYTHON）运行
-  process.env.RQ_BRIDGE_PATH ??= join(process.resourcesPath, 'rq-bridge', 'rq_bridge.py');
+  // 米筐 A 股行情桥随 App 打进 Resources/rq-bridge，由用户自己的 Python（RQ_PYTHON）运行；
+  // 用户配置里的 RQ_BRIDGE_PATH 稍后才加载，所以这里只给默认值，不占用那个键
+  process.env.KANSOKU_BUNDLED_RQ_BRIDGE = join(process.resourcesPath, 'rq-bridge', 'rq_bridge.py');
 }
 process.env.TRADE_PROJECT_ROOT = dataRoot;
 

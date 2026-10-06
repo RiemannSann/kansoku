@@ -88,6 +88,13 @@ def num(value) -> float | None:
     return out if math.isfinite(out) else None
 
 
+def text(value) -> str:
+    # pandas 的缺失值是 NaN（真值为 True），`or ""` 挡不住，会让 json.dumps 报错
+    if value is None or (isinstance(value, float) and not math.isfinite(value)):
+        return ""
+    return str(value)
+
+
 def stamp(value) -> str:
     if isinstance(value, datetime):
         return value.strftime("%Y-%m-%d %H:%M:%S")
@@ -286,13 +293,14 @@ def m_news(params):
     df = df.sort_values("create_tm", ascending=False).head(limit)
     rows = []
     for _, row in df.iterrows():
-        link = row.get("announcement_link") or ""
+        link = text(row.get("announcement_link"))
+        title = text(row.get("title"))
         created = row.get("create_tm")
         rows.append(
             {
                 # 同一个链接会被多条公告复用（比如交易所的大宗交易汇总页），id 必须带上时间和标题
-                "id": f"{order_book_id}:{stamp(created)}:{row.get('title')}",
-                "title": row.get("title") or "",
+                "id": f"{order_book_id}:{stamp(created)}:{title}",
+                "title": title,
                 "t": stamp(created.to_pydatetime() if hasattr(created, "to_pydatetime") else created),
                 "url": link,
             }
@@ -304,8 +312,13 @@ def m_market_caps(params):
     symbols = list(params["symbols"])
     if not symbols:
         return {}
-    day = rq.get_previous_trading_date(today_cn() + timedelta(days=1))
-    df = rq.get_factor([to_rq(s) for s in symbols], "market_cap_3", day, day)
+    ids = [to_rq(s) for s in symbols]
+    # 当天的市值因子收盘后才发布，盘中取不到就退回上一个交易日
+    day = latest_trading_day()
+    df = rq.get_factor(ids, "market_cap_3", day, day)
+    if df is None or df.empty:
+        day = rq.get_previous_trading_date(day)
+        df = rq.get_factor(ids, "market_cap_3", day, day)
     caps = {}
     if df is None or df.empty:
         return caps
@@ -352,7 +365,14 @@ def main() -> None:
         if not line:
             continue
         response = handle(line)
-        sys.stdout.write(json.dumps(response, ensure_ascii=False, allow_nan=False) + "\n")
+        try:
+            payload = json.dumps(response, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            # 某个字段序列化不了也只让这一个请求失败，进程不能退出
+            log(f"{response.get('id')} unserializable response: {exc}")
+            error = {"id": response.get("id"), "ok": False, "error": f"bad response: {exc}"}
+            payload = json.dumps(error, ensure_ascii=False)
+        sys.stdout.write(payload + "\n")
         sys.stdout.flush()
 
 
