@@ -19,9 +19,12 @@ import sys
 import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import rqdatac as rq
 
+# 交易日按北京时间算，不跟着 Mac 的时区走
+SHANGHAI = ZoneInfo("Asia/Shanghai")
 SUFFIX_TO_RQ = {"SH": "XSHG", "SZ": "XSHE"}
 SUFFIX_FROM_RQ = {v: k for k, v in SUFFIX_TO_RQ.items()}
 
@@ -93,8 +96,12 @@ def stamp(value) -> str:
     return str(value)[:19]
 
 
+def today_cn() -> date:
+    return datetime.now(tz=SHANGHAI).date()
+
+
 def latest_trading_day() -> date:
-    today = date.today()
+    today = today_cn()
     if rq.is_trading_date(today):
         return today
     return rq.get_previous_trading_date(today)
@@ -240,7 +247,7 @@ def m_flow(params):
 def m_news(params):
     order_book_id = to_rq(params["symbol"])
     limit = max(1, min(int(params.get("limit", 6)), 50))
-    end = date.today()
+    end = today_cn()
     df = rq.get_announcement(order_book_id, start_date=end - timedelta(days=120), end_date=end)
     if df is None or df.empty:
         return []
@@ -265,7 +272,7 @@ def m_market_caps(params):
     symbols = list(params["symbols"])
     if not symbols:
         return {}
-    day = rq.get_previous_trading_date(date.today() + timedelta(days=1))
+    day = rq.get_previous_trading_date(today_cn() + timedelta(days=1))
     df = rq.get_factor([to_rq(s) for s in symbols], "market_cap_3", day, day)
     caps = {}
     if df is None or df.empty:

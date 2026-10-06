@@ -22,7 +22,9 @@ import { DateTimeline } from './DateTimeline';
 import { EventCanvasHost } from '../events/EventCanvasHost';
 import { EventCalendar } from './EventCalendar';
 import { HomeEventTimeline } from './HomeEventTimeline';
-import { HomeTopStrip, INDEX_SYMBOLS } from './HomeTopStrip';
+import { HomeTopStrip } from './HomeTopStrip';
+import { indexSymbolsFor } from './indexSymbols';
+import type { Market } from '../settings/types';
 import { MarketPanorama } from './MarketPanorama';
 import { PositionsCard } from './PositionsCard';
 import { QuickBar } from './QuickBar';
@@ -164,9 +166,13 @@ export function Home() {
   );
   const boardError = boardDegraded ? '盘面数据获取失败，正在重试' : null;
 
+  const { data: watched } = useQuery<{ markets: Market[] }>('settings.getWatchedMarkets', () =>
+    client.settings.getWatchedMarkets(),
+  );
+  const indexSymbols = indexSymbolsFor(watched?.markets);
   const [quoteSnap, setQuoteSnap] = useState<QuoteSnapshot | null>(null);
   const { degraded: quotesDegraded, snapshotAt: quotesSnapshotAt } = useWsChannel<QuoteSnapshot>(
-    { kind: 'quotes', extra: INDEX_SYMBOLS },
+    { kind: 'quotes', extra: indexSymbols },
     setQuoteSnap,
   );
 

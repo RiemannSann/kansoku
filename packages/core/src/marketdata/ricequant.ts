@@ -1,6 +1,7 @@
 import type { NewsItem, RawBar } from '@kansoku/shared/types';
 import { ClientError } from '../platform/errors.js';
 import type { FlowRow } from '../analysis/simple.js';
+import { readCnWatchlist } from './cnWatchlist.js';
 import { getRicequantBridge, RicequantBridgeError, type RicequantCall } from './ricequantBridge.js';
 import { parseShanghai, rqBarTime } from './ricequantTime.js';
 import type { MarketDataProvider, RawQuote } from './types.js';
@@ -122,7 +123,7 @@ export function createRicequantProvider(
 
   return {
     name: 'ricequant',
-    capabilities: new Set(['flow', 'market-cap']),
+    capabilities: new Set(['flow', 'market-cap', 'watchlist']),
 
     async getKline(symbol: string, period: string, count: number): Promise<RawBar[]> {
       const normalized = normalizePeriod(period);
@@ -176,6 +177,11 @@ export function createRicequantProvider(
         symbol,
       });
       return rows.map((row) => ({ time: isoShanghai(row.t), inflow: row.inflow }));
+    },
+
+    // 自选股来自本机文件（见 cnWatchlist.ts），不走米筐
+    getWatchlistSymbols(): Promise<string[]> {
+      return readCnWatchlist();
     },
 
     async getMarketCaps(symbols: string[]): Promise<Record<string, number>> {

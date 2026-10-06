@@ -12,7 +12,7 @@ import { Badge, Card, Dot, Empty, MarketTime, Num } from '@web/ui';
 import { directionTone } from '@web/features/charts/intraday/directionLabels';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
 import { fmtFlow, fmtFlowLabeled, flowTone } from './flowFormat';
-import { INDEX_SYMBOLS } from './HomeTopStrip';
+import { INDEX_SYMBOLS } from './indexSymbols';
 import { FollowToggle, ReassessButton } from './SymbolActions';
 
 const DIRECTION_LABEL: Record<string, string> = { long: '做多', short: '做空', neutral: '观望' };

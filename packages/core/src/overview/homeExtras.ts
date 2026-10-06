@@ -1,6 +1,7 @@
 import type { MarketTemp } from '@kansoku/shared/types';
 import type { FlowRow } from '../analysis/simple.js';
 import { getProvider } from '../marketdata/registry.js';
+import { hasAnyWatchlist, readAllWatchlists } from '../marketdata/streamRouting.js';
 
 const FLOW_TTL_MS = 60_000;
 const OPTION_SYMBOL_RE = /\d{6}[CP]\d+/;
@@ -118,7 +119,9 @@ async function getFlows(symbols: string[]): Promise<Record<string, number | null
 async function getMarketTemp(): Promise<MarketTemp | null> {
   if (tempCache && Date.now() - tempCache.at < TEMP_TTL_MS) return tempCache.value;
   const provider = getProvider();
-  const value = provider.getMarketTemp ? await provider.getMarketTemp('US').catch(() => null) : null;
+  const value = provider.getMarketTemp
+    ? await provider.getMarketTemp('US').catch(() => null)
+    : null;
   tempCache = { at: Date.now(), value };
   return value;
 }
@@ -137,10 +140,10 @@ async function readWatchSymbols(): Promise<WatchRead> {
   const failures: string[] = [];
   let attempted = 0;
 
-  if (provider.getWatchlistSymbols) {
+  if (hasAnyWatchlist()) {
     attempted += 1;
     try {
-      for (const symbol of await provider.getWatchlistSymbols()) set.add(symbol);
+      for (const symbol of await readAllWatchlists()) set.add(symbol);
     } catch (error) {
       failures.push(`watchlist — ${error instanceof Error ? error.message : String(error)}`);
     }

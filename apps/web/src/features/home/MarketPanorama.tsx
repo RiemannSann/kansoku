@@ -7,7 +7,7 @@ import { usePollingQuery } from '@web/lib/apiHooks';
 import { client } from '@web/lib/client';
 import { NoteBlock, Tooltip } from '@web/ui';
 import { colors, fontSizes, fonts } from '../../theme/tokens.stylex';
-import { INDEX_SYMBOLS } from './HomeTopStrip';
+import { INDEX_SYMBOLS } from './indexSymbols';
 import { isCardWorthySymbol } from './SymbolGrid';
 import { squarify, type TreemapRect } from './treemap';
 

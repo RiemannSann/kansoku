@@ -3,9 +3,8 @@ import * as stylex from '@stylexjs/stylex';
 import { signed, upDown } from '@web/lib/format';
 import { Badge, DataAgeBadge, Dot } from '@web/ui';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
+import { INDEX_LABELS, INDEX_SYMBOLS } from './indexSymbols';
 import { RecapCell } from './RecapCell';
-
-export const INDEX_SYMBOLS = ['SPY.US', 'QQQ.US', '.DJI.US', '.VIX.US'];
 
 interface HomeTopStripProps {
   sessionLabel: string | null;
@@ -123,7 +122,7 @@ function IndexCell({ q }: { q: QuoteCell }) {
   return (
     <a {...stylex.props(styles.indexCell)} href={`/symbol/${encodeURIComponent(q.symbol)}`}>
       <span className={`idx-sym ${stylex.props(styles.indexSymbol).className}`}>
-        {q.symbol.replace(/\.US$/, '')}
+        {INDEX_LABELS[q.symbol] ?? q.symbol.replace(/\.US$/, '')}
       </span>
       <span
         className={`num ${tone} ${stylex.props(styles.number, tone === 'up' && styles.up, tone === 'down' && styles.down).className}`}
@@ -146,9 +145,7 @@ export function HomeTopStrip({
   recapDate,
 }: HomeTopStripProps) {
   const bySymbol = new Map(quotes.map((q) => [q.symbol, q]));
-  const cells = INDEX_SYMBOLS.map((s) => bySymbol.get(s)).filter(
-    (q): q is QuoteCell => q != null,
-  );
+  const cells = INDEX_SYMBOLS.map((s) => bySymbol.get(s)).filter((q): q is QuoteCell => q != null);
   return (
     <div className={`home-top-strip ${stylex.props(styles.root).className}`}>
       <div className={`hts-id ${stylex.props(styles.id).className}`}>
@@ -162,9 +159,7 @@ export function HomeTopStrip({
       </div>
       <div className={`hts-cluster ${stylex.props(styles.cluster).className}`}>
         <DataAgeBadge at={snapshotAt} />
-        {degraded && (
-          <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />
-        )}
+        {degraded && <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />}
         {cells.length === 0 ? (
           <span {...stylex.props(styles.indexPlaceholder)}>指数行情连接中…</span>
         ) : (

@@ -2,6 +2,7 @@ import type { QuoteCell, QuoteSnapshot } from '@kansoku/shared/types';
 import { getProvider, getStream } from '../marketdata/registry.js';
 import {
   distinctStreams,
+  readAllWatchlists,
   releaseSymbols,
   retainSymbols,
 } from '../marketdata/streamRouting.js';
@@ -75,7 +76,7 @@ async function refreshBaseSymbols(): Promise<void> {
     const provider = getProvider();
     const set = new Set<string>();
     const [watchlist, positions] = await Promise.allSettled([
-      provider.getWatchlistSymbols?.() ?? Promise.resolve([]),
+      readAllWatchlists(),
       provider.getPositions?.() ?? Promise.resolve([]),
     ]);
     if (watchlist.status === 'fulfilled') {

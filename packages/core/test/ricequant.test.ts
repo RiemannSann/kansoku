@@ -1,5 +1,10 @@
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CandleBar } from '../src/marketdata/candleAggregator.js';
+import { parseCnWatchlist, readCnWatchlist } from '../src/marketdata/cnWatchlist.js';
+import { longbridgeProvider } from '../src/marketdata/longbridge.js';
 import { getProvider, getStream } from '../src/marketdata/registry.js';
 import { createRicequantProvider, type BridgeSnapshot } from '../src/marketdata/ricequant.js';
 import { RicequantBridgeError } from '../src/marketdata/ricequantBridge.js';
@@ -10,6 +15,7 @@ import {
   parseShanghai,
   rqBarTime,
 } from '../src/marketdata/ricequantTime.js';
+import { hasAnyWatchlist, readAllWatchlists } from '../src/marketdata/streamRouting.js';
 
 const iso = (label: string) => new Date(parseShanghai(label)).toISOString();
 
@@ -256,5 +262,53 @@ describe('ricequant stream', () => {
     fetchSnapshots.mockClear();
     await stream.poll();
     expect(fetchSnapshots).not.toHaveBeenCalled();
+  });
+});
+
+describe('cn watchlist file', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('accepts the usual code spellings, comments and duplicates', () => {
+    const text = [
+      '# 今日涨停股',
+      '600519',
+      'sz000001  300750.SZ',
+      'SH688981,002594',
+      '600519.SH # 重复',
+      'IF9999',
+      '830799',
+      '',
+    ].join('\n');
+    expect(parseCnWatchlist(text)).toEqual([
+      '600519.SH',
+      '000001.SZ',
+      '300750.SZ',
+      '688981.SH',
+      '002594.SZ',
+    ]);
+  });
+
+  it('treats a missing file as an empty watchlist', async () => {
+    expect(await readCnWatchlist('/nonexistent/kansoku/cn-watchlist.txt')).toEqual([]);
+  });
+
+  it('merges every provider watchlist and survives one provider failing', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'kansoku-wl-'));
+    const file = path.join(dir, 'cn-watchlist.txt');
+    await writeFile(file, '600519\n300750.SZ\n');
+    vi.stubEnv('MARKET_PROVIDER_CN', 'ricequant');
+    vi.stubEnv('RQ_WATCHLIST_FILE', file);
+
+    const longbridgeWatchlist = vi
+      .spyOn(longbridgeProvider, 'getWatchlistSymbols')
+      .mockResolvedValue(['AAPL.US', '600519.SH']);
+    expect(hasAnyWatchlist()).toBe(true);
+    expect(await readAllWatchlists()).toEqual(['AAPL.US', '600519.SH', '300750.SZ']);
+
+    longbridgeWatchlist.mockRejectedValue(new Error('longbridge not logged in'));
+    expect(await readAllWatchlists()).toEqual(['600519.SH', '300750.SZ']);
   });
 });
