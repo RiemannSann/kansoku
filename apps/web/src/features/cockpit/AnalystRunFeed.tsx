@@ -5,12 +5,13 @@ import type {
   TechnicalSection,
 } from '@kansoku/core/contract/symbols';
 import * as stylex from '@stylexjs/stylex';
-import { money } from '@web/lib/format';
+import { fmt } from '@web/lib/format';
 import { marketOfSymbol } from '@web/lib/market';
 import { Badge, Card, Dot, Empty, ErrorBox, MarketTime, SectionTitle } from '@web/ui';
 import { colors, fontSizes, radii } from '../../theme/tokens.stylex';
 import { PHASE_LABEL } from './AnalysisRunDetails';
 import { useAnalystRunLastEnded, useAnalystRunStatus } from './analystRunsStore';
+import { PricePrefixProvider, usePricePrefix } from '@web/lib/currency';
 
 const TIMEFRAME_LABEL: Record<string, string> = {
   m5: '5 分钟',
@@ -195,6 +196,7 @@ function CardSkeleton({ rows }: { rows: number }) {
 }
 
 function TechnicalCard({ section }: { section: TechnicalSection | undefined }) {
+  const prefix = usePricePrefix();
   return (
     <Card className="analyst-run-card--technical">
       <div {...stylex.props(styles.cardHead)}>
@@ -221,7 +223,10 @@ function TechnicalCard({ section }: { section: TechnicalSection | undefined }) {
             <div {...stylex.props(styles.levels)}>
               {section.levels.map((lvl, i) => (
                 <div key={i} {...stylex.props(styles.level)}>
-                  <span {...stylex.props(styles.levelPrice)}>{money(lvl.price)}</span>
+                  <span {...stylex.props(styles.levelPrice)}>
+                    {prefix}
+                    {fmt(lvl.price)}
+                  </span>
                   <span {...stylex.props(styles.levelLabel)}>{lvl.label}</span>
                 </div>
               ))}
@@ -329,7 +334,9 @@ export function AnalystRunFeed({ sym }: { sym: string }) {
   return (
     <div className={`analyst-run-feed ${stylex.props(styles.root).className}`}>
       {!running && <ErrorBox {...stylex.props(styles.banner)}>分析未完成</ErrorBox>}
-      <TechnicalCard section={sections.technical} />
+      <PricePrefixProvider symbol={sym}>
+        <TechnicalCard section={sections.technical} />
+      </PricePrefixProvider>
       <ContextCard section={sections.context} />
       <ActivityFeed
         sym={sym}

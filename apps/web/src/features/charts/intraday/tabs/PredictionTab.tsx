@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
 import type { IntradayBuilt, TimeframeKey } from '@kansoku/shared/types';
@@ -15,6 +15,8 @@ import {
 } from './predictionTabParts';
 import { MarketTime, SectionTitle, TimeAgo } from '@web/ui';
 import { colors, fontSizes, radii } from '../../../../theme/tokens.stylex';
+import { localizePriceText, usePricePrefix } from '@web/lib/currency';
+import { applyColorConvention } from '@web/lib/colorConvention';
 
 const SIGNAL_ICON: Record<string, string> = {
   pin_bar: '📌',
@@ -226,7 +228,12 @@ export function PredictionTab({
   reassess,
   emptyCta,
 }: PredictionTabProps) {
-  const s = built.sidebar;
+  const prefix = usePricePrefix();
+  // 内核写的提示文字和区间颜色按市场/涨跌配色换一遍，和图上保持一致
+  const s = useMemo(
+    () => applyColorConvention(localizePriceText(built.sidebar, built.sidebar.symbol)),
+    [built.sidebar],
+  );
   const p = s.prediction;
   const ep = s.entryPlan;
   const scenarios = (p?.scenarios ?? []).map((sc) => {
@@ -395,22 +402,28 @@ export function PredictionTab({
             className={`grid2 ${stylex.props(styles.grid, Boolean(ep.entry_status_note) && styles.gridAfterNote).className}`}
           >
             <div className={`k ${stylex.props(styles.gridKey).className}`}>入场</div>
-            <div className={`v ${stylex.props(styles.gridValue).className}`}>${fmt(ep.entry)}</div>
+            <div className={`v ${stylex.props(styles.gridValue).className}`}>
+              {prefix}
+              {fmt(ep.entry)}
+            </div>
             <div className={`k ${stylex.props(styles.gridKey).className}`}>止损</div>
             <div className={`v ${stylex.props(styles.gridValue, styles.toneDown).className}`}>
-              ${fmt(ep.stop)}
+              {prefix}
+              {fmt(ep.stop)}
             </div>
             <div className={`k ${stylex.props(styles.gridKey).className}`}>
               目标1 ({signed(ep.target1_pct, 1)}%)
             </div>
             <div className={`v ${stylex.props(styles.gridValue, styles.toneUp).className}`}>
-              ${fmt(ep.target1)}
+              {prefix}
+              {fmt(ep.target1)}
             </div>
             <div className={`k ${stylex.props(styles.gridKey).className}`}>
               目标2 ({signed(ep.target2_pct, 1)}%)
             </div>
             <div className={`v ${stylex.props(styles.gridValue, styles.toneUp).className}`}>
-              ${fmt(ep.target2)}
+              {prefix}
+              {fmt(ep.target2)}
             </div>
             <div className={`k ${stylex.props(styles.gridKey).className}`}>R/R</div>
             <div
@@ -502,7 +515,7 @@ export function PredictionTab({
                 </div>
                 <div className={`check-val ${stylex.props(styles.checkValue).className}`}>
                   {TF_LABELS[sig.timeframe] ?? sig.timeframe}
-                  {sig.price != null ? ` · $${fmt(sig.price)}` : ''}
+                  {sig.price != null ? ` · ${prefix}${fmt(sig.price)}` : ''}
                 </div>
               </div>
             </div>

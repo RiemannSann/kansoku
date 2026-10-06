@@ -46,6 +46,8 @@ export interface FvgDisplayContext {
   currentPrice?: number;
   lastBarTime?: number;
   timeframeLabel?: string;
+  /** 价格前缀：美股 $、港股 HK$、A 股为空 */
+  pricePrefix?: string;
 }
 
 interface RectPx {
@@ -258,7 +260,7 @@ export class FvgPrimitive implements ISeriesPrimitive<Time> {
   }
 }
 
-const formatPrice = (price: number) => `$${price.toFixed(2)}`;
+const formatPrice = (price: number, prefix = '$') => `${prefix}${price.toFixed(2)}`;
 
 export function formatFvgTooltip(zone: IntradayFvgZone, context: FvgDisplayContext = {}): string {
   const { activeLow, activeHigh } = clampActiveRange(zone);
@@ -281,8 +283,8 @@ export function formatFvgTooltip(zone: IntradayFvgZone, context: FvgDisplayConte
 
   return [
     `${direction}${timeframe}`,
-    `原始 ${formatPrice(zone.low)}–${formatPrice(zone.high)}`,
-    `剩余 ${formatPrice(activeLow)}–${formatPrice(activeHigh)} · 已回补 ${mitigation}%`,
+    `原始 ${formatPrice(zone.low, context.pricePrefix)}–${formatPrice(zone.high, context.pricePrefix)}`,
+    `剩余 ${formatPrice(activeLow, context.pricePrefix)}–${formatPrice(activeHigh, context.pricePrefix)} · 已回补 ${mitigation}%`,
     [age, gap.replace(/^ · /, ''), distance].filter(Boolean).join(' · '),
   ]
     .filter(Boolean)

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { TriangleAlert } from 'lucide-react';
 import type { IntradayBuilt, QuoteCell, TimeframeKey } from '@kansoku/shared/types';
@@ -15,6 +15,7 @@ import { NewsTab } from './tabs/NewsTab';
 import { PositionTab } from './tabs/PositionTab';
 import { PredictionTab } from './tabs/PredictionTab';
 import { colors, fontSizes } from '../../../theme/tokens.stylex';
+import { localizePriceText, pricePrefix, PricePrefixProvider } from '@web/lib/currency';
 
 const styles = stylex.create({
   sidebar: {
@@ -111,8 +112,9 @@ export function IntradaySidebar({
   dock,
   live = false,
 }: IntradaySidebarProps) {
-  const s = built.sidebar;
+  const s = useMemo(() => localizePriceText(built.sidebar, built.sidebar.symbol), [built.sidebar]);
   const market = marketOfSymbol(s.symbol);
+  const prefix = pricePrefix(s.symbol);
   const source = useDataSourceLabel(s.symbol);
   const displayedQuote = resolveSidebarQuote(s, useLiveQuote(live ? s.symbol : null));
   const [internalActive, setInternalActive] = useState('prediction');
@@ -152,40 +154,47 @@ export function IntradaySidebar({
   const tabs = tabsOverride ?? [...defaultTabs, ...(extraTabs ?? [])];
 
   return (
-    <div className={`sidebar ${stylex.props(styles.sidebar).className}`}>
-      <div className={`sidebar-scroll ${stylex.props(styles.sidebarScroll).className}`}>
-        <div className={`header ${stylex.props(styles.header).className}`}>
-          <div className={`symbol ${stylex.props(styles.symbol).className}`}>{s.symbol}</div>
-          <div className={`name ${stylex.props(styles.name).className}`}>{s.name}</div>
-          <div className={`price ${stylex.props(styles.price).className}`}>
-            ${fmt(displayedQuote.last)}
+    <PricePrefixProvider symbol={s.symbol}>
+      <div className={`sidebar ${stylex.props(styles.sidebar).className}`}>
+        <div className={`sidebar-scroll ${stylex.props(styles.sidebarScroll).className}`}>
+          <div className={`header ${stylex.props(styles.header).className}`}>
+            <div className={`symbol ${stylex.props(styles.symbol).className}`}>{s.symbol}</div>
+            <div className={`name ${stylex.props(styles.name).className}`}>{s.name}</div>
+            <div className={`price ${stylex.props(styles.price).className}`}>
+              {prefix}
+              {fmt(displayedQuote.last)}
+            </div>
+            <div className={`price-date ${stylex.props(styles.priceDate).className}`}>
+              {displayedQuote.asOf ? (
+                <MarketTime value={displayedQuote.asOf} market={market} />
+              ) : (
+                ''
+              )}{' '}
+              · {source}
+            </div>
           </div>
-          <div className={`price-date ${stylex.props(styles.priceDate).className}`}>
-            {displayedQuote.asOf ? <MarketTime value={displayedQuote.asOf} market={market} /> : ''}{' '}
-            · {source}
+
+          <ConclusionCard
+            context={s.context}
+            predictionStale={predictionStale}
+            reassess={conclusionReassess}
+          />
+
+          <EventRiskCard eventRisk={s.eventRisk} />
+
+          <SidebarTabs active={active} onChange={setActive} tabs={tabs} />
+
+          <div className={`disclaimer ${stylex.props(styles.disclaimer).className}`}>
+            <TriangleAlert className={`icon ${stylex.props(styles.icon).className}`} size={12} />{' '}
+            仅供学习参考，不构成投资建议。数据来源：{source}。
+            <br />
+            方向判断、情景推演和入场计划为 AI 分析结论；Pin Bar、MACD 背离标注及 MACD
+            数值由服务端算法自动计算。
           </div>
         </div>
 
-        <ConclusionCard
-          context={s.context}
-          predictionStale={predictionStale}
-          reassess={conclusionReassess}
-        />
-
-        <EventRiskCard eventRisk={s.eventRisk} />
-
-        <SidebarTabs active={active} onChange={setActive} tabs={tabs} />
-
-        <div className={`disclaimer ${stylex.props(styles.disclaimer).className}`}>
-          <TriangleAlert className={`icon ${stylex.props(styles.icon).className}`} size={12} />{' '}
-          仅供学习参考，不构成投资建议。数据来源：{source}。
-          <br />
-          方向判断、情景推演和入场计划为 AI 分析结论；Pin Bar、MACD 背离标注及 MACD
-          数值由服务端算法自动计算。
-        </div>
+        {dock}
       </div>
-
-      {dock}
-    </div>
+    </PricePrefixProvider>
   );
 }

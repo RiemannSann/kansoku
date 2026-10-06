@@ -1,9 +1,10 @@
 import * as stylex from '@stylexjs/stylex';
-import { money, signed, upDown } from '../../lib/format';
+import { fmt, signed, upDown } from '../../lib/format';
 import { marketOfSymbol } from '../../lib/market';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
 import { Badge, MarketTime } from '../../ui';
 import { useLiveQuote } from './useLiveQuote';
+import { pricePrefix } from '@web/lib/currency';
 
 const styles = stylex.create({
   root: {
@@ -55,7 +56,8 @@ export function TopbarQuote({ sym }: { sym: string }) {
   return (
     <span {...stylex.props(styles.root)}>
       <span className={`num${numberClassName ? ` ${numberClassName}` : ''}`}>
-        {money(quote.last)}
+        {pricePrefix(quote.symbol)}
+        {fmt(quote.last)}
       </span>
       <span className={`num${numberClassName ? ` ${numberClassName}` : ''}`}>
         {pctText(quote.pct)}

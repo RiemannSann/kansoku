@@ -8,6 +8,7 @@ import { symbolUrl } from './analysisMode';
 import { DIRECTION_LABEL } from '@web/features/charts/intraday/directionLabels';
 import { Badge, MarketTime, SectionTitle } from '@web/ui';
 import { colors, fontSizes } from '../../theme/tokens.stylex';
+import { pricePrefix } from '@web/lib/currency';
 
 const styles = stylex.create({
   item: {
@@ -145,7 +146,7 @@ export function HistoryTab({
             </span>
           </div>
           <div className={`zone-meta md ${stylex.props(styles.meta).className}`}>
-            {row.anchor ? `锚点 $${fmt(row.anchor.price)}` : '无锚点'}
+            {row.anchor ? `锚点 ${pricePrefix(symbol)}${fmt(row.anchor.price)}` : '无锚点'}
             {' · '}
             {row.outcome ? <OutcomeText status={row.outcome.status} /> : '—'}
             {row.outcome && ` · ${signed(row.outcome.pct_since_anchor)}%`}

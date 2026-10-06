@@ -45,6 +45,7 @@ import { ZhongshuPrimitive } from './zhongshuPrimitive';
 import { filterVisibleOverlayItems, selectVisibleMarkers } from './markerSelection';
 import { applyColorConvention } from '@web/lib/colorConvention';
 import { seriesPalette, theme } from '@web/lib/theme';
+import { localizePriceText, pricePrefix } from '@web/lib/currency';
 
 const EMA_COLORS = [
   theme.accent,
@@ -95,8 +96,8 @@ const PREVIEW_LEVEL_COLOR = 'rgba(154, 154, 154, 0.45)';
 
 const fmtOi = (oi: number) => (oi >= 1000 ? `${(oi / 1000).toFixed(1)}k` : String(oi));
 
-const zoneTitle = (z: IntradayPriceZone, edge?: '上沿' | '下沿') =>
-  `${z.label}${edge ? edge : ''} $${(edge === '上沿' ? z.high : z.low).toFixed(2)}`;
+const zoneTitle = (z: IntradayPriceZone, prefix: string, edge?: '上沿' | '下沿') =>
+  `${z.label}${edge ? edge : ''} ${prefix}${(edge === '上沿' ? z.high : z.low).toFixed(2)}`;
 
 const RECENT_SB_COUNT = 2;
 
@@ -112,7 +113,7 @@ function firstTouchTime(
   return null;
 }
 
-const secondBreakoutMarkers = (sbs: SecondBreakout[]): SeriesMarker[] => {
+const secondBreakoutMarkers = (sbs: SecondBreakout[], prefix: string): SeriesMarker[] => {
   const markers: SeriesMarker[] = [];
   sbs.forEach((sb, i) => {
     const bullish = sb.kind === 'H2';
@@ -136,7 +137,7 @@ const secondBreakoutMarkers = (sbs: SecondBreakout[]): SeriesMarker[] => {
         color: theme.textSecondary,
         shape: 'circle',
         text: '',
-        tooltip: `SB 结构酝酿中：等待收盘${attemptVerb} $${sb.signal.price.toFixed(2)}`,
+        tooltip: `SB 结构酝酿中：等待收盘${attemptVerb} ${prefix}${sb.signal.price.toFixed(2)}`,
         group: 'sb',
       });
     } else if (sb.trigger) {
@@ -148,7 +149,7 @@ const secondBreakoutMarkers = (sbs: SecondBreakout[]): SeriesMarker[] => {
         color: theme.accent,
         shape: bullish ? 'arrowUp' : 'arrowDown',
         text: sb.kind,
-        tooltip: `${sb.kind} 结构确认\n${extremeText} $${sb.trigger.price.toFixed(2)} ${attemptVerb}信号棒`,
+        tooltip: `${sb.kind} 结构确认\n${extremeText} ${prefix}${sb.trigger.price.toFixed(2)} ${attemptVerb}信号棒`,
         group: 'sb',
       });
     }
@@ -174,7 +175,11 @@ export function useIntradayCharts(
   onHandle?: (h: DrawingChartHandle | null) => void,
 ): void {
   // 内核数据里带的涨跌色按用户的红涨/绿涨设置对调一次（绿涨时原样返回同一个对象）
-  const built = useMemo(() => applyColorConvention(rawBuilt), [rawBuilt]);
+  const built = useMemo(
+    () => applyColorConvention(localizePriceText(rawBuilt, rawBuilt.sidebar.symbol)),
+    [rawBuilt],
+  );
+  const prefix = pricePrefix(built.sidebar.symbol);
   const handleRef = useRef<Handle | null>(null);
   const builtRef = useRef(built);
   builtRef.current = built;
@@ -353,6 +358,7 @@ export function useIntradayCharts(
     const currentPrice = d.candles.at(-1)?.close;
     const fvgZones = toggles.fvg ? (d.fvgZones ?? []) : [];
     const fvgContext = {
+      pricePrefix: prefix,
       currentPrice,
       lastBarTime,
       timeframeLabel: tfShortLabel(activeTf),
@@ -382,7 +388,7 @@ export function useIntradayCharts(
       markerRange === 'all'
         ? (d.secondBreakouts ?? [])
         : (d.secondBreakouts ?? []).slice(-RECENT_SB_COUNT);
-    const sbMarkers = toggles.sb ? secondBreakoutMarkers(sbSource) : [];
+    const sbMarkers = toggles.sb ? secondBreakoutMarkers(sbSource, prefix) : [];
     const markers = selectVisibleMarkers([...d.markers, ...sbMarkers], toggles, markerRange);
     h.candleMarkers.setMarkers(toMarkers(markers));
     h.mainTip.setMarkers(markers);
@@ -420,7 +426,7 @@ export function useIntradayCharts(
           color: theme.accent,
           lineWidth: 1,
           lineStyle: 2,
-          title: `🎯 锚 $${anchorHere.price.toFixed(2)}`,
+          title: `🎯 锚 ${prefix}${anchorHere.price.toFixed(2)}`,
         }),
       );
     }
@@ -466,7 +472,7 @@ export function useIntradayCharts(
             color: planDead ? deadColor : theme.accent,
             lineWidth: 2,
             lineStyle: planDead ? 2 : 0,
-            title: `入场 $${ep.entry.toFixed(2)}${suffix}`,
+            title: `入场 ${prefix}${ep.entry.toFixed(2)}${suffix}`,
           }),
         );
         h.planLines.push(
@@ -475,7 +481,7 @@ export function useIntradayCharts(
             color: planDead ? deadColor : theme.down,
             lineWidth: 2,
             lineStyle: 2,
-            title: `止损 $${ep.stop.toFixed(2)}`,
+            title: `止损 ${prefix}${ep.stop.toFixed(2)}`,
           }),
         );
         h.planLines.push(
@@ -484,7 +490,7 @@ export function useIntradayCharts(
             color: planDead ? deadColor : theme.up,
             lineWidth: 1,
             lineStyle: 2,
-            title: `T1 $${ep.target1.toFixed(2)}`,
+            title: `T1 ${prefix}${ep.target1.toFixed(2)}`,
           }),
         );
         h.planLines.push(
@@ -493,7 +499,7 @@ export function useIntradayCharts(
             color: planDead ? deadColor : seriesPalette[1],
             lineWidth: 1,
             lineStyle: 2,
-            title: `T2 $${ep.target2.toFixed(2)}`,
+            title: `T2 ${prefix}${ep.target2.toFixed(2)}`,
           }),
         );
       }
@@ -508,7 +514,7 @@ export function useIntradayCharts(
                 color,
                 lineWidth: 1,
                 lineStyle: 2,
-                title: zoneTitle(z),
+                title: zoneTitle(z, prefix),
               }),
             );
           } else {
@@ -518,7 +524,7 @@ export function useIntradayCharts(
                 color,
                 lineWidth: 1,
                 lineStyle: 2,
-                title: zoneTitle(z, '下沿'),
+                title: zoneTitle(z, prefix, '下沿'),
               }),
             );
             h.planLines.push(
@@ -527,7 +533,7 @@ export function useIntradayCharts(
                 color,
                 lineWidth: 1,
                 lineStyle: 2,
-                title: zoneTitle(z, '上沿'),
+                title: zoneTitle(z, prefix, '上沿'),
               }),
             );
           }
@@ -553,7 +559,7 @@ export function useIntradayCharts(
             color: DAY_LEVEL_COLOR,
             lineWidth: 1,
             lineStyle: 1,
-            title: `${title} $${price.toFixed(2)}`,
+            title: `${title} ${prefix}${price.toFixed(2)}`,
           }),
         );
       }
@@ -569,7 +575,7 @@ export function useIntradayCharts(
             color: call ? CALL_WALL_COLOR : PUT_WALL_COLOR,
             lineWidth: 1,
             lineStyle: 4,
-            title: `${call ? 'C墙' : 'P墙'} $${w.strike} (${fmtOi(call ? w.call_oi : w.put_oi)})`,
+            title: `${call ? 'C墙' : 'P墙'} ${prefix}${w.strike} (${fmtOi(call ? w.call_oi : w.put_oi)})`,
           }),
         );
       }
@@ -614,5 +620,5 @@ export function useIntradayCharts(
     lastBuiltRef.current = built;
     barCountRef.current = d.candles.length;
     firstTimeRef.current = timeline[0] ?? null;
-  }, [built, activeTf, toggles, markerRange, maSeries]);
+  }, [built, activeTf, toggles, markerRange, maSeries, prefix]);
 }

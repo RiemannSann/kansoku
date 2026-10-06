@@ -11,6 +11,7 @@ import { fmt } from '@web/lib/format';
 import { theme } from '@web/lib/theme';
 import { Badge, MarketTime } from '@web/ui';
 import { colors, fontSizes } from '../../../../theme/tokens.stylex';
+import { usePricePrefix } from '@web/lib/currency';
 
 const styles = stylex.create({
   icon: {
@@ -206,6 +207,7 @@ export function PriceZoneCard({
   zone: IntradayPriceZone;
   compact?: boolean;
 }) {
+  const prefix = usePricePrefix();
   const color = zone.color ?? theme.textSecondary;
   const isBand = Math.abs(zone.high - zone.low) >= 0.0001;
   const zoneStyle = stylex.props(
@@ -228,7 +230,9 @@ export function PriceZoneCard({
           {zone.label}
         </span>
         <span className={`zone-range ${zoneRangeStyle.className ?? ''}`}>
-          {isBand ? `$${fmt(zone.low)} - $${fmt(zone.high)}` : `$${fmt(zone.low)}`}
+          {isBand
+            ? `${prefix}${fmt(zone.low)} - ${prefix}${fmt(zone.high)}`
+            : `${prefix}${fmt(zone.low)}`}
         </span>
       </div>
       <div className={`zone-meta ${zoneMetaStyle.className ?? ''}`}>
@@ -271,9 +275,7 @@ export function TargetContextCard({ target }: { target: IntradayTargetContext })
 export function TechRow({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <div className={`k ${stylex.props(styles.gridKey).className}`}>
-        {label} DIF/DEA/HIST
-      </div>
+      <div className={`k ${stylex.props(styles.gridKey).className}`}>{label} DIF/DEA/HIST</div>
       <div className={`v left ${stylex.props(styles.gridValue, styles.gridValueLeft).className}`}>
         {value}
       </div>

@@ -6,6 +6,8 @@ import { fmt, signed } from '@web/lib/format';
 import { colors, fontSizes } from '../../../theme/tokens.stylex';
 import { NewsSection } from '../NewsSection';
 import { Badge, Num, SectionTitle } from '@web/ui';
+import { localizePriceText, pricePrefix } from '@web/lib/currency';
+import { useMemo } from 'react';
 
 const styles = stylex.create({
   sidebar: {
@@ -232,7 +234,8 @@ function rrTone(ep: { rr_great: boolean; rr_ok: boolean }): string {
 }
 
 export function SepaSidebar({ built }: { built: SepaBuilt }) {
-  const s = built.sidebar;
+  const s = useMemo(() => localizePriceText(built.sidebar, built.sidebar.symbol), [built.sidebar]);
+  const prefix = pricePrefix(s.symbol);
   const source = useDataSourceLabel(s.symbol);
   const ep = built.chart.entryPlan;
   const zones = built.chart.supportZones;
@@ -245,7 +248,8 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
           <div className={`symbol ${stylex.props(styles.symbol).className}`}>{s.symbol}</div>
           <div className={`name ${stylex.props(styles.name).className}`}>{s.name}</div>
           <div className={`price ${stylex.props(styles.price).className}`}>
-            ${fmt(s.last)}
+            {prefix}
+            {fmt(s.last)}
             <span
               className={`price-change ${stylex.props(styles.priceChange, s.chgPct >= 0 ? styles.priceUp : styles.priceDown).className}`}
             >
@@ -369,8 +373,9 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
                     {z.label}
                   </span>
                   <span className={`zone-range ${stylex.props(styles.zoneRange).className}`}>
-                    ${fmt(z.low)} – ${fmt(z.high)} (
-                    {signed(((z.high + z.low) / 2 / s.last) * 100 - 100, 1)}%)
+                    {prefix}
+                    {fmt(z.low)} – {prefix}
+                    {fmt(z.high)} ({signed(((z.high + z.low) / 2 / s.last) * 100 - 100, 1)}%)
                   </span>
                 </div>
                 <div className={`zone-meta ${stylex.props(styles.zoneMeta).className}`}>
@@ -402,23 +407,28 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
             <div className={`grid2 ${stylex.props(styles.grid2).className}`}>
               <div className={`k ${stylex.props(styles.key).className}`}>买入区间 (pivot+5%)</div>
               <div className={`v ${stylex.props(styles.value).className}`}>
-                ${fmt(ep.pivot)} – ${fmt(ep.buy_zone_high)}
+                {prefix}
+                {fmt(ep.pivot)} – {prefix}
+                {fmt(ep.buy_zone_high)}
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>止损</div>
               <div className={`v ${stylex.props(styles.value, styles.valueDown).className}`}>
-                ${fmt(ep.stop)} ({signed(ep.stop_pct, 1)}%)
+                {prefix}
+                {fmt(ep.stop)} ({signed(ep.stop_pct, 1)}%)
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>
                 第一目标 (+{fmt(ep.target1_pct, 0)}%)
               </div>
               <div className={`v ${stylex.props(styles.value, styles.valueUp).className}`}>
-                ${fmt(ep.target1)}
+                {prefix}
+                {fmt(ep.target1)}
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>
                 第二目标 (+{fmt(ep.target2_pct, 0)}%)
               </div>
               <div className={`v ${stylex.props(styles.value, styles.valueUp).className}`}>
-                ${fmt(ep.target2)}
+                {prefix}
+                {fmt(ep.target2)}
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>R/R 比例 (基于 T2)</div>
               <div
@@ -458,7 +468,8 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>成本</div>
               <div className={`v ${stylex.props(styles.value).className}`}>
-                ${fmt(s.position.cost)}
+                {prefix}
+                {fmt(s.position.cost)}
               </div>
               <div className={`k ${stylex.props(styles.key).className}`}>
                 浮{s.position.unrealized >= 0 ? '盈' : '亏'}

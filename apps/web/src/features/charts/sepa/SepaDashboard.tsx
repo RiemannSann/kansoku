@@ -90,7 +90,14 @@ export function SepaDashboard({ built }: { built: SepaBuilt }) {
   const rsRef = useRef<HTMLDivElement>(null);
   const vrRef = useRef<HTMLDivElement>(null);
   const vpCanvasRef = useRef<HTMLCanvasElement>(null);
-  const groups = useSepaCharts(built.chart, mainRef, rsRef, vrRef, vpCanvasRef);
+  const groups = useSepaCharts(
+    built.chart,
+    built.sidebar.symbol,
+    mainRef,
+    rsRef,
+    vrRef,
+    vpCanvasRef,
+  );
   const kv = built.sidebar.keyValues;
 
   return (

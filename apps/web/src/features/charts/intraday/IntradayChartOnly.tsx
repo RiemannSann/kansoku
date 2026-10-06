@@ -9,6 +9,8 @@ import { isSessionlessTf, tfDataOf, type ChartTf } from './timeframes';
 import { useLiveBuilt } from './useLiveBuilt';
 import { useMaSeries } from './useMaLines';
 import { useIntradayCharts, type DrawingChartHandle } from './useIntradayCharts';
+import { pricePrefix } from '@web/lib/currency';
+import { marketOfSymbol } from '@web/lib/market';
 
 const MACD_MIN = 100;
 const MACD_MAX = 340;
@@ -223,10 +225,11 @@ export function IntradayChartOnly({
                   style={{ background: s.line.color }}
                 />
                 EMA{s.line.period}
-                {s.last !== null && ` $${fmt(s.last)}`}
+                {s.last !== null && ` ${pricePrefix(symbol)}${fmt(s.last)}`}
               </span>
             ))}
-          {!isSessionlessTf(activeTf) && (
+          {/* 只有美股有盘前/盘后/夜盘，港股和 A 股不显示这两个图例 */}
+          {!isSessionlessTf(activeTf) && marketOfSymbol(symbol) === 'US' && (
             <>
               <span>
                 <span
