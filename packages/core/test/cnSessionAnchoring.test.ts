@@ -59,6 +59,23 @@ describe('CN session anchoring', () => {
     expect(Math.abs(vwap.at(-1)!.value - exchangeAvg) / exchangeAvg).toBeLessThan(0.002);
   });
 
+  it('uses bar turnover when present, so the close matches turnover ÷ volume exactly', () => {
+    const symbol = '688330.SH';
+    const bars = FIXTURE.symbols[symbol].bars_1m.map(
+      ([t, open, high, low, close, volume, turnover]): RawBar => ({
+        time: rqBarTime(`${FIXTURE.day} ${t}:00`, '1m'),
+        open,
+        high,
+        low,
+        close,
+        volume,
+        ...(turnover > 0 ? { turnover } : {}),
+      }),
+    );
+    const day = FIXTURE.symbols[symbol].day_bar;
+    expect(sessionVwap(bars, 'CN').at(-1)!.value).toBeCloseTo(day.total_turnover / day.volume, 9);
+  });
+
   it('resets the average-price line at the next Beijing trading day, not at US midnight', () => {
     const today = oneMinuteBars('000001.SZ');
     const next = oneMinuteBars('000001.SZ', '2026-10-08').map((bar) => ({

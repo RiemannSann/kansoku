@@ -27,7 +27,9 @@ export function sessionVwap(bars: RawBar[], market: Market = 'US'): LinePoint[] 
       if (vol > 0) out.push({ time: ts, value: pv / vol });
       continue;
     }
-    pv += ((h + l + c) / 3) * v;
+    // 有成交额（米筐 A 股分钟线）就用成交额，和同花顺均价线同口径；没有就用典型价近似
+    const turnover = bar.turnover ?? 0;
+    pv += turnover > 0 ? turnover : ((h + l + c) / 3) * v;
     vol += v;
     out.push({ time: ts, value: pv / vol });
   }
