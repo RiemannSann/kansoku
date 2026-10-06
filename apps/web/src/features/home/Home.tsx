@@ -31,6 +31,7 @@ import { PositionsCard } from './PositionsCard';
 import { QuickBar } from './QuickBar';
 import { RecapBoard } from './RecapBoard';
 import { SymbolGrid } from './SymbolGrid';
+import { WatchTable } from './WatchTable';
 import { TrainerCard } from './TrainerCard';
 import { WatchBoard } from './WatchBoard';
 
@@ -225,6 +226,13 @@ export function Home() {
     ...new Set([...watching, ...(portfolio?.positions.map((p) => p.symbol) ?? [])]),
   ];
 
+  const watchesCn = watched?.markets.includes('CN') ?? false;
+  const cnSection = watchesCn ? (
+    <>
+      <SectionTitleWithAge label="A 股自选" at={quotesSnapshotAt} />
+      <WatchTable quotes={quoteSnap?.quotes ?? []} profiles={board?.profiles ?? {}} />
+    </>
+  ) : null;
   const flowSection = (
     <>
       <SectionTitleWithAge label="市场全景" at={quotesSnapshotAt} />
@@ -307,7 +315,9 @@ export function Home() {
                 board={board}
                 portfolio={portfolio ?? null}
                 events={events ?? null}
+                hideCnTail={watchesCn}
               />
+              {cnSection}
               {flowSection}
             </div>
             <div
@@ -331,6 +341,7 @@ export function Home() {
           <div className={`home-grid ${stylex.props(styles.grid).className}`}>
             <div className="home-main">
               <RecapBoard date={date} defaultExpanded />
+              {cnSection}
               {flowSection}
             </div>
             <div

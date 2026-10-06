@@ -9,6 +9,7 @@ import type {
 import * as stylex from '@stylexjs/stylex';
 import { fmt, signed } from '@web/lib/format';
 import { LIMIT_LABEL, limitState } from '@web/lib/limitState';
+import { marketOfSymbol } from '@web/lib/market';
 import { Badge, Card, Dot, Empty, MarketTime, Num } from '@web/ui';
 import { directionTone } from '@web/features/charts/intraday/directionLabels';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
@@ -349,13 +350,17 @@ export function SymbolGrid(props: {
   board: OverviewBoard | null;
   portfolio: PortfolioSummary | null;
   events: HomeEvents | null;
+  /** A 股自选表已经单独列出时，A 股的「没分析过、没持仓」的票不再在尾部重复 */
+  hideCnTail?: boolean;
 }) {
   const entries = buildGridEntries(props);
   if (!entries.length) {
     return <Empty>自选和持仓还是空的——去长桥加自选，或在 cockpit 跑一次分析</Empty>;
   }
   const cards = entries.filter((e) => e.row != null || e.owned);
-  const tail = entries.filter((e) => e.row == null && !e.owned);
+  const tail = entries.filter(
+    (e) => e.row == null && !e.owned && !(props.hideCnTail && marketOfSymbol(e.symbol) === 'CN'),
+  );
   const today = props.events?.date ?? null;
   const movers = tail.filter((e) => isMover(e, today));
   const quiet = tail.filter((e) => !isMover(e, today));
