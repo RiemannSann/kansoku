@@ -16,15 +16,29 @@ export function distinctProviders(): MarketDataProvider[] {
  * 所有行情源的自选股合并（长桥自选 + 本机 A 股自选）。
  * 一个源失败不拖累其它源；只有全部失败时才抛出第一个错误。
  */
-export async function readAllWatchlists(): Promise<string[]> {
-  const readers = distinctProviders().flatMap((provider) =>
-    provider.getWatchlistSymbols ? [provider.getWatchlistSymbols()] : [],
+export interface WatchlistsRead {
+  symbols: string[];
+  /** 有几个行情源提供自选 */
+  attempted: number;
+  /** 读失败的行情源（不为空时 symbols 只是一部分，调用方不该拿它整体替换旧名单） */
+  failures: string[];
+}
+
+export async function readAllWatchlists(): Promise<WatchlistsRead> {
+  const providers = distinctProviders().filter((provider) => provider.getWatchlistSymbols);
+  const results = await Promise.allSettled(
+    providers.map((provider) => provider.getWatchlistSymbols!()),
   );
-  if (!readers.length) return [];
-  const results = await Promise.allSettled(readers);
-  const lists = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
-  if (!lists.length) throw (results[0] as PromiseRejectedResult).reason;
-  return [...new Set(lists.flat())];
+  const symbols = new Set<string>();
+  const failures: string[] = [];
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') for (const symbol of result.value) symbols.add(symbol);
+    else {
+      const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      failures.push(`${providers[index].name} watchlist — ${reason}`);
+    }
+  });
+  return { symbols: [...symbols], attempted: providers.length, failures };
 }
 
 /** 是否有任何行情源提供自选股 */

@@ -82,7 +82,7 @@ async function refreshBaseSymbols(): Promise<void> {
       readLiveSellerHeld(),
     ]);
     if (watchlist.status === 'fulfilled') {
-      for (const s of watchlist.value) set.add(s);
+      for (const s of watchlist.value.symbols) set.add(s);
     }
     if (positions.status === 'fulfilled') {
       for (const p of positions.value) set.add(p.symbol);
@@ -90,7 +90,19 @@ async function refreshBaseSymbols(): Promise<void> {
     if (liveHeld.status === 'fulfilled') {
       for (const s of liveHeld.value) set.add(s);
     }
-    if (set.size) {
+    // 某个来源（比如长桥）这次没读到时，名单不完整：只追加不退订，也不记刷新时间，下次再试，
+    // 免得 A 股文件读到了就把美股订阅全退掉
+    const partial =
+      watchlist.status === 'rejected' ||
+      (watchlist.status === 'fulfilled' && watchlist.value.failures.length > 0) ||
+      positions.status === 'rejected';
+    if (partial && set.size) {
+      const added = [...set].filter((s) => !baseSymbols.includes(s));
+      if (added.length) {
+        baseSymbols = [...baseSymbols, ...added];
+        await retainSymbols(added).catch(() => {});
+      }
+    } else if (set.size) {
       const next = [...set];
       const dropped = baseSymbols.filter((s) => !set.has(s));
       const added = next.filter((s) => !baseSymbols.includes(s));

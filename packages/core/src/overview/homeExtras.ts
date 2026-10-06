@@ -19,6 +19,8 @@ export function flowEligible(symbol: string): boolean {
 
 const TEMP_TTL_MS = 10 * 60_000;
 const WATCH_TTL_MS = 10 * 60_000;
+// 有来源读失败时名单不完整，只短暂缓存，尽快重试
+const PARTIAL_WATCH_TTL_MS = 60_000;
 const FLOW_CONCURRENCY = 1;
 
 const CAPS_TTL_MS = 30 * 60_000;
@@ -34,8 +36,8 @@ interface HomeExtras {
 
 let flowCache = new Map<string, { at: number; value: number | null }>();
 let tempCache: { at: number; value: MarketTemp | null } | null = null;
-let watchCache: { at: number; symbols: string[] } | null = null;
-let capsCache: { at: number; value: Record<string, number> } | null = null;
+let watchCache: { expiresAt: number; symbols: string[] } | null = null;
+let capsCache: { at: number; value: Record<string, number>; checked: Set<string> } | null = null;
 // Names and industries barely change; fetched once per symbol per process.
 let profileCache = new Map<string, SecurityProfile>();
 let warming: Promise<void> | null = null;
@@ -66,19 +68,27 @@ export function homeExtrasWarm(): Promise<void> {
 
 async function getCaps(symbols: string[]): Promise<Record<string, number>> {
   if (!symbols.length) return {};
-  if (capsCache && Date.now() - capsCache.at < CAPS_TTL_MS) {
-    const missing = symbols.filter((s) => !(s in capsCache!.value));
-    if (!missing.length) return capsCache.value;
-  }
-  const groups = groupByProvider(symbols).filter(([provider]) => provider.getMarketCaps);
+  const live = capsCache && Date.now() - capsCache.at < CAPS_TTL_MS ? capsCache : null;
+  // 只补查还没问过的代码；没有市值的（ETF、指数）问过一次就记下，不会每次都重查
+  const wanted = live ? symbols.filter((s) => !live.checked.has(s)) : symbols;
+  if (!wanted.length) return live!.value;
+  const groups = groupByProvider(wanted).filter(([provider]) => provider.getMarketCaps);
   if (!groups.length) return capsCache?.value ?? {};
   const results = await Promise.allSettled(
     groups.map(([provider, group]) => provider.getMarketCaps!(group)),
   );
-  const fresh = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
-  if (!fresh.length) return capsCache?.value ?? {};
-  const value = Object.assign({}, ...fresh) as Record<string, number>;
-  capsCache = { at: Date.now(), value };
+  const value = { ...live?.value };
+  const checked = new Set(live?.checked);
+  let answered = false;
+  results.forEach((result, index) => {
+    if (result.status !== 'fulfilled') return;
+    answered = true;
+    Object.assign(value, result.value);
+    for (const symbol of groups[index][1]) checked.add(symbol);
+  });
+  // 一个源失败时保留旧值，下次再补查它那部分
+  if (!answered) return capsCache?.value ?? {};
+  capsCache = { at: live?.at ?? Date.now(), value, checked };
   return value;
 }
 
@@ -178,12 +188,11 @@ async function readWatchSymbols(): Promise<WatchRead> {
   let attempted = 0;
 
   if (hasAnyWatchlist()) {
-    attempted += 1;
-    try {
-      for (const symbol of await readAllWatchlists()) set.add(symbol);
-    } catch (error) {
-      failures.push(`watchlist — ${error instanceof Error ? error.message : String(error)}`);
-    }
+    // 长桥和米筐各算一个来源：长桥挂了而 A 股文件还在，也要记成失败
+    const watchlists = await readAllWatchlists();
+    attempted += watchlists.attempted;
+    failures.push(...watchlists.failures);
+    for (const symbol of watchlists.symbols) set.add(symbol);
   }
   // StockSeller 实盘仓位：没开看板就是空的，不算失败
   for (const symbol of await readLiveSellerHeld().catch(() => [])) set.add(symbol);
@@ -198,28 +207,30 @@ async function readWatchSymbols(): Promise<WatchRead> {
   return { attempted, failures, symbols: [...set] };
 }
 
-function cacheWatchSymbols(symbols: string[]): void {
-  if (symbols.length) watchCache = { at: Date.now(), symbols };
+function cacheWatchSymbols({ symbols, failures }: WatchRead): void {
+  if (!symbols.length) return;
+  const ttl = failures.length ? PARTIAL_WATCH_TTL_MS : WATCH_TTL_MS;
+  watchCache = { expiresAt: Date.now() + ttl, symbols };
 }
 
 export async function getWatchSymbols(): Promise<string[]> {
-  if (watchCache && Date.now() - watchCache.at < WATCH_TTL_MS) return watchCache.symbols;
-  const { symbols } = await readWatchSymbols();
-  cacheWatchSymbols(symbols);
-  return symbols;
+  if (watchCache && Date.now() < watchCache.expiresAt) return watchCache.symbols;
+  const read = await readWatchSymbols();
+  cacheWatchSymbols(read);
+  return read.symbols;
 }
 
 // Same reads, but "both sources refused" is reported instead of being rounded down to
 // an empty watch list. A collector that took the empty list at face value would go
 // quiet and still claim to be healthy.
 export async function getWatchSymbolsStrict(): Promise<string[]> {
-  if (watchCache && Date.now() - watchCache.at < WATCH_TTL_MS) return watchCache.symbols;
-  const { attempted, failures, symbols } = await readWatchSymbols();
-  if (attempted > 0 && failures.length === attempted) {
-    throw new Error(`watched symbols unavailable: ${failures.join('; ')}`);
+  if (watchCache && Date.now() < watchCache.expiresAt) return watchCache.symbols;
+  const read = await readWatchSymbols();
+  if (read.attempted > 0 && read.failures.length === read.attempted) {
+    throw new Error(`watched symbols unavailable: ${read.failures.join('; ')}`);
   }
-  cacheWatchSymbols(symbols);
-  return symbols;
+  cacheWatchSymbols(read);
+  return read.symbols;
 }
 
 function snapshotExtras(symbols: string[], market: MarketTemp | null): HomeExtras {
@@ -251,7 +262,7 @@ function capsNeedRefresh(symbols: string[]): boolean {
   if (!symbols.length) return false;
   if (!symbols.some((s) => getProvider(marketOf(s)).getMarketCaps)) return false;
   if (!capsCache || Date.now() - capsCache.at >= CAPS_TTL_MS) return true;
-  return symbols.some((s) => !(s in capsCache!.value));
+  return symbols.some((s) => !capsCache!.checked.has(s));
 }
 
 function profilesNeedFetch(symbols: string[]): boolean {

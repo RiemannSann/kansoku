@@ -66,6 +66,24 @@ describe('getWatchSymbolsStrict', () => {
     await expect(getWatchSymbolsStrict()).resolves.toEqual(['NVDA.US']);
   });
 
+  it('re-reads soon after a partial answer instead of caching it for ten minutes', async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
+    try {
+      const watchlist = vi.fn(async (): Promise<string[]> => {
+        throw new Error('watchlist down');
+      });
+      provider.getWatchlistSymbols = watchlist;
+      provider.getPositions = vi.fn(async () => [position('NVDA.US')]);
+      await expect(getWatchSymbols()).resolves.toEqual(['NVDA.US']);
+
+      watchlist.mockResolvedValue(['AAPL.US']);
+      vi.setSystemTime(NOW.getTime() + 61_000);
+      await expect(getWatchSymbols()).resolves.toEqual(['AAPL.US', 'NVDA.US']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('reports an empty list without failing when the provider offers neither read', async () => {
     await expect(getWatchSymbolsStrict()).resolves.toEqual([]);
   });
