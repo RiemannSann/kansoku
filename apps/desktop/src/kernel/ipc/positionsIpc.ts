@@ -12,4 +12,9 @@ export class PositionsIpc extends IpcService implements WrapEnvelope<PositionsAp
   list() {
     return toEnvelope('positions.list', () => positionsService.list());
   }
+
+  @IpcMethod()
+  liveSeller() {
+    return toEnvelope('positions.liveSeller', () => positionsService.liveSeller());
+  }
 }

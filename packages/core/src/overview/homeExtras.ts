@@ -1,5 +1,6 @@
 import type { MarketTemp } from '@kansoku/shared/types';
 import type { FlowRow } from '../analysis/simple.js';
+import { readLiveSellerHeld } from '../liveSeller/liveSeller.js';
 import { getProvider } from '../marketdata/registry.js';
 import {
   groupByProvider,
@@ -183,6 +184,8 @@ async function readWatchSymbols(): Promise<WatchRead> {
       failures.push(`watchlist — ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+  // StockSeller 实盘仓位：没开看板就是空的，不算失败
+  for (const symbol of await readLiveSellerHeld().catch(() => [])) set.add(symbol);
   if (provider.getPositions) {
     attempted += 1;
     try {

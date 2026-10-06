@@ -1,4 +1,5 @@
 import type { QuoteCell, QuoteSnapshot } from '@kansoku/shared/types';
+import { readLiveSellerHeld } from '../liveSeller/liveSeller.js';
 import { getProvider, getStream } from '../marketdata/registry.js';
 import {
   distinctStreams,
@@ -75,15 +76,19 @@ async function refreshBaseSymbols(): Promise<void> {
   baseRefreshInFlight = (async () => {
     const provider = getProvider();
     const set = new Set<string>();
-    const [watchlist, positions] = await Promise.allSettled([
+    const [watchlist, positions, liveHeld] = await Promise.allSettled([
       readAllWatchlists(),
       provider.getPositions?.() ?? Promise.resolve([]),
+      readLiveSellerHeld(),
     ]);
     if (watchlist.status === 'fulfilled') {
       for (const s of watchlist.value) set.add(s);
     }
     if (positions.status === 'fulfilled') {
       for (const p of positions.value) set.add(p.symbol);
+    }
+    if (liveHeld.status === 'fulfilled') {
+      for (const s of liveHeld.value) set.add(s);
     }
     if (set.size) {
       const next = [...set];

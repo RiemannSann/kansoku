@@ -14,16 +14,17 @@ import * as SyncComponent4 from "./pages/canvases/index.sync"
 import * as SyncComponent5 from "./pages/charts/[id].sync"
 import * as SyncComponent6 from "./pages/charts/index.sync"
 import * as SyncComponent7 from "./pages/chat.sync"
-import * as SyncComponent8 from "./pages/logs.sync"
-import * as SyncComponent9 from "./pages/overview.sync"
-import * as SyncComponent10 from "./pages/popout/symbol/[sym].sync"
-import * as SyncComponent11 from "./pages/research/index.sync"
-import * as SyncComponent12 from "./pages/settings/[section].sync"
-import * as SyncComponent13 from "./pages/settings/index.sync"
-import * as SyncComponent14 from "./pages/symbol/[sym].sync"
-import * as SyncComponent15 from "./pages/symbol/sepa/[sym].sync"
-import * as SyncComponent16 from "./pages/training/stats.sync"
-import * as SyncComponent17 from "./pages/index.sync"
+import * as SyncComponent8 from "./pages/live.sync"
+import * as SyncComponent9 from "./pages/logs.sync"
+import * as SyncComponent10 from "./pages/overview.sync"
+import * as SyncComponent11 from "./pages/popout/symbol/[sym].sync"
+import * as SyncComponent12 from "./pages/research/index.sync"
+import * as SyncComponent13 from "./pages/settings/[section].sync"
+import * as SyncComponent14 from "./pages/settings/index.sync"
+import * as SyncComponent15 from "./pages/symbol/[sym].sync"
+import * as SyncComponent16 from "./pages/symbol/sepa/[sym].sync"
+import * as SyncComponent17 from "./pages/training/stats.sync"
+import * as SyncComponent18 from "./pages/index.sync"
 
 // Generated route configuration
 export const routes: RouteObject[] = [
@@ -86,16 +87,22 @@ export const routes: RouteObject[] = [
     "handle": SyncComponent7.handle
   },
   {
-    "path": "logs",
+    "path": "live",
     "Component": SyncComponent8.Component,
     "loader": SyncComponent8.loader,
     "handle": SyncComponent8.handle
   },
   {
-    "path": "overview",
+    "path": "logs",
     "Component": SyncComponent9.Component,
     "loader": SyncComponent9.loader,
     "handle": SyncComponent9.handle
+  },
+  {
+    "path": "overview",
+    "Component": SyncComponent10.Component,
+    "loader": SyncComponent10.loader,
+    "handle": SyncComponent10.handle
   },
   {
     "path": "popout",
@@ -105,9 +112,9 @@ export const routes: RouteObject[] = [
         "children": [
           {
             "path": ":sym",
-            "Component": SyncComponent10.Component,
-            "loader": SyncComponent10.loader,
-            "handle": SyncComponent10.handle
+            "Component": SyncComponent11.Component,
+            "loader": SyncComponent11.loader,
+            "handle": SyncComponent11.handle
           }
         ]
       }
@@ -118,9 +125,9 @@ export const routes: RouteObject[] = [
     "children": [
       {
         "path": "",
-        "Component": SyncComponent11.Component,
-        "loader": SyncComponent11.loader,
-        "handle": SyncComponent11.handle
+        "Component": SyncComponent12.Component,
+        "loader": SyncComponent12.loader,
+        "handle": SyncComponent12.handle
       }
     ]
   },
@@ -129,15 +136,15 @@ export const routes: RouteObject[] = [
     "children": [
       {
         "path": ":section",
-        "Component": SyncComponent12.Component,
-        "loader": SyncComponent12.loader,
-        "handle": SyncComponent12.handle
-      },
-      {
-        "path": "",
         "Component": SyncComponent13.Component,
         "loader": SyncComponent13.loader,
         "handle": SyncComponent13.handle
+      },
+      {
+        "path": "",
+        "Component": SyncComponent14.Component,
+        "loader": SyncComponent14.loader,
+        "handle": SyncComponent14.handle
       }
     ]
   },
@@ -146,18 +153,18 @@ export const routes: RouteObject[] = [
     "children": [
       {
         "path": ":sym",
-        "Component": SyncComponent14.Component,
-        "loader": SyncComponent14.loader,
-        "handle": SyncComponent14.handle
+        "Component": SyncComponent15.Component,
+        "loader": SyncComponent15.loader,
+        "handle": SyncComponent15.handle
       },
       {
         "path": "sepa",
         "children": [
           {
             "path": ":sym",
-            "Component": SyncComponent15.Component,
-            "loader": SyncComponent15.loader,
-            "handle": SyncComponent15.handle
+            "Component": SyncComponent16.Component,
+            "loader": SyncComponent16.loader,
+            "handle": SyncComponent16.handle
           }
         ]
       }
@@ -168,17 +175,17 @@ export const routes: RouteObject[] = [
     "children": [
       {
         "path": "stats",
-        "Component": SyncComponent16.Component,
-        "loader": SyncComponent16.loader,
-        "handle": SyncComponent16.handle
+        "Component": SyncComponent17.Component,
+        "loader": SyncComponent17.loader,
+        "handle": SyncComponent17.handle
       }
     ]
   },
   {
     "path": "",
-    "Component": SyncComponent17.Component,
-    "loader": SyncComponent17.loader,
-    "handle": SyncComponent17.handle
+    "Component": SyncComponent18.Component,
+    "loader": SyncComponent18.loader,
+    "handle": SyncComponent18.handle
   }
 ]
 

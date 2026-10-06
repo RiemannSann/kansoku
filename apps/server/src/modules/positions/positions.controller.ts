@@ -10,4 +10,10 @@ export class PositionsController {
     const data = await this.service.list();
     return { ok: true, data };
   }
+
+  @Get('/live-seller')
+  async getLiveSeller() {
+    const data = await this.service.liveSeller();
+    return { ok: true, data };
+  }
 }

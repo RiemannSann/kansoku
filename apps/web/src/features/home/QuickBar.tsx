@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Library, MessageCircle, Settings, Sparkles } from 'lucide-react';
+import { Library, MessageCircle, Settings, Sparkles, Wallet } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
 import { useCapabilities } from '@web/features/edition/capabilitiesStore';
 import { openLicenseModal } from '@web/features/edition/licenseModalStore';
@@ -136,6 +136,9 @@ export function QuickBar({
             title="研究库"
           >
             <Library size={16} />
+          </a>
+          <a {...stylex.props(styles.action)} href="/live" aria-label="实盘看板" title="实盘看板">
+            <Wallet size={16} />
           </a>
           <a {...stylex.props(styles.action)} href="/chat" aria-label="AI 对话" title="AI 对话">
             <MessageCircle size={16} />

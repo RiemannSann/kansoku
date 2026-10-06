@@ -2,6 +2,7 @@ import type { PortfolioSummary } from '@kansoku/shared/types';
 import type { PositionsApi } from '../contract/positions.js';
 import { ClientError } from '../platform/errors.js';
 import { getProvider } from '../marketdata/registry.js';
+import { fetchLiveSeller } from '../liveSeller/liveSeller.js';
 import { summarizePortfolio } from './positions.utils.js';
 
 const CACHE_TTL_MS = 30_000;
@@ -25,6 +26,10 @@ export function createPositionsService(): PositionsApi {
       const data = summarizePortfolio(await provider.getPortfolio());
       cache = { at: Date.now(), data };
       return data;
+    },
+
+    liveSeller() {
+      return fetchLiveSeller();
     },
   };
 }
