@@ -1,6 +1,7 @@
 import { isDesktopRealtime } from '@web/lib/portTransport';
 import { NoteBlock } from '@web/ui';
 import { AgentKitSection } from './AgentKitSection';
+import { ColorConventionSettingsCard } from './ColorConventionSettingsCard';
 import { DiagnosticsSection } from './DiagnosticsSection';
 import { LicenseSection } from './LicenseSection';
 import { LongbridgeSection } from './LongbridgeSection';
@@ -25,6 +26,7 @@ export function DisplayPane() {
   return (
     <>
       <TimeDisplaySettingsCard />
+      <ColorConventionSettingsCard />
       <WatchedMarketsCard />
       <ProSections section="display" />
     </>

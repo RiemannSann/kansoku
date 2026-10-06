@@ -17,6 +17,7 @@ import type {
   SeriesMarker,
 } from '@kansoku/shared/types';
 import { fmt } from '@web/lib/format';
+import { BASE_DOWN, BASE_UP } from '@web/lib/colorConvention';
 import { theme } from '@web/lib/theme';
 import type { ChartTf } from '../charts/intraday/timeframes';
 import { extendTierWithEpilogue } from './epilogueTiers';
@@ -68,8 +69,8 @@ const EXIT_MARK_LABEL: Record<TrainerClosedTrade['exitReason'], string> = {
 };
 
 const EXIT_MARK_COLOR: Record<TrainerClosedTrade['exitReason'], string> = {
-  stop: theme.down,
-  target: theme.up,
+  stop: BASE_DOWN,
+  target: BASE_UP,
   manual: theme.textSecondary,
   horizon: theme.textSecondary,
 };
@@ -243,7 +244,7 @@ export function rawBarsToTfData(
     return {
       time: timesTs[i],
       value: vols[i],
-      color: surge ? VOLUME_SURGE_COLOR : closes[i] >= Number(b.open) ? theme.up : theme.down,
+      color: surge ? VOLUME_SURGE_COLOR : closes[i] >= Number(b.open) ? BASE_UP : BASE_DOWN,
     };
   });
   const { dif, dea, hist } = macd(closes);

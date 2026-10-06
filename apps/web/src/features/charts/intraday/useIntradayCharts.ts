@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   CandlestickSeries,
   HistogramSeries,
@@ -43,6 +43,7 @@ import { PositionBoxPrimitive } from './positionBoxPrimitive';
 import { SessionBgPrimitive } from './sessionPrimitive';
 import { ZhongshuPrimitive } from './zhongshuPrimitive';
 import { filterVisibleOverlayItems, selectVisibleMarkers } from './markerSelection';
+import { applyColorConvention } from '@web/lib/colorConvention';
 import { seriesPalette, theme } from '@web/lib/theme';
 
 const EMA_COLORS = [
@@ -162,7 +163,7 @@ export interface DrawingChartHandle {
 }
 
 export function useIntradayCharts(
-  built: IntradayBuilt,
+  rawBuilt: IntradayBuilt,
   activeTf: ChartTf,
   mainRef: RefObject<HTMLDivElement | null>,
   macdRef: RefObject<HTMLDivElement | null>,
@@ -172,6 +173,8 @@ export function useIntradayCharts(
   maSeries: MaSeries[],
   onHandle?: (h: DrawingChartHandle | null) => void,
 ): void {
+  // 内核数据里带的涨跌色按用户的红涨/绿涨设置对调一次（绿涨时原样返回同一个对象）
+  const built = useMemo(() => applyColorConvention(rawBuilt), [rawBuilt]);
   const handleRef = useRef<Handle | null>(null);
   const builtRef = useRef(built);
   builtRef.current = built;

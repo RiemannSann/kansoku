@@ -13,6 +13,7 @@ import { theme } from '@web/lib/theme';
 import { attachMarkers, observeSize, toCandleData, toMarkers } from '../charts/lw';
 import { tfDataOf, type ChartTf } from '../charts/intraday/timeframes';
 import type { DrawingChartHandle } from '../charts/intraday/useIntradayCharts';
+import { applyColorConvention } from '@web/lib/colorConvention';
 
 const styles = stylex.create({
   host: {
@@ -94,7 +95,7 @@ export function TrainerThumbnail({ built, activeTf, onChartHandle }: TrainerThum
     const data = tfDataOf(built, activeTf);
     if (!current || !data) return;
     current.candle.setData(toCandleData(data.candles));
-    current.markers.setMarkers(toMarkers(arrowsOnly(data.markers)));
+    current.markers.setMarkers(toMarkers(arrowsOnly(applyColorConvention(data.markers))));
     current.chart.timeScale().fitContent();
   }, [built, activeTf]);
 

@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BaselineSeries,
   CandlestickSeries,
@@ -24,17 +24,19 @@ import {
   toMarkers,
   toVolumeData,
 } from '../lw';
+import { applyColorConvention, swapUpDown } from '@web/lib/colorConvention';
 import { seriesPalette, theme } from '@web/lib/theme';
 
 const VP_WIDTH = 90;
 
 export function useSepaCharts(
-  chart: SepaChartData,
+  rawChart: SepaChartData,
   mainRef: RefObject<HTMLDivElement | null>,
   rsRef: RefObject<HTMLDivElement | null>,
   vrRef: RefObject<HTMLDivElement | null>,
   vpCanvasRef: RefObject<HTMLCanvasElement | null>,
 ): LayerGroup[] {
+  const chart = useMemo(() => applyColorConvention(rawChart), [rawChart]);
   const [groups, setGroups] = useState<LayerGroup[]>([]);
 
   useEffect(() => {
@@ -101,9 +103,9 @@ export function useSepaCharts(
     if (ep) {
       const green = main.addSeries(BaselineSeries, {
         baseValue: { type: 'price', price: ep.pivot },
-        topFillColor1: 'rgba(38, 166, 154, 0.25)',
-        topFillColor2: 'rgba(38, 166, 154, 0.05)',
-        topLineColor: 'rgba(38, 166, 154, 0)',
+        topFillColor1: swapUpDown('rgba(38, 166, 154, 0.25)'),
+        topFillColor2: swapUpDown('rgba(38, 166, 154, 0.05)'),
+        topLineColor: swapUpDown('rgba(38, 166, 154, 0)'),
         bottomFillColor1: 'rgba(0, 0, 0, 0)',
         bottomFillColor2: 'rgba(0, 0, 0, 0)',
         bottomLineColor: 'rgba(0, 0, 0, 0)',
