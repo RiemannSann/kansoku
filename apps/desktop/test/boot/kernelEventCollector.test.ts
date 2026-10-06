@@ -49,7 +49,10 @@ vi.mock('@kansoku/core/pro/loader', () => ({ loadPro: vi.fn(async () => null) })
 const disposeMarketData = vi.hoisted(() => vi.fn());
 vi.mock('@kansoku/core/marketdata/registry', () => ({ disposeMarketData }));
 
-vi.mock('../../../server/src/dotenv.js', () => ({ loadDotenv: vi.fn() }));
+vi.mock('../../../server/src/dotenv.js', () => ({
+  loadDotenv: vi.fn(),
+  userEnvFile: vi.fn(() => '/nonexistent/kansoku.env'),
+}));
 
 vi.mock('../../../server/src/bootstrap.js', () => ({
   createKernel: vi.fn(async () => ({

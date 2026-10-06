@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadDotenv } from '../src/dotenv.js';
+import { loadDotenv, userEnvFile } from '../src/dotenv.js';
 
 const KEYS = ['DOTENV_TEST_A', 'DOTENV_TEST_B', 'DOTENV_TEST_C', 'DOTENV_TEST_EXISTING'];
 
@@ -44,5 +44,12 @@ describe('loadDotenv', () => {
 
   it('silently ignores a missing file', () => {
     expect(() => loadDotenv('/nonexistent/.env')).not.toThrow();
+  });
+});
+
+describe('userEnvFile', () => {
+  it('defaults to ~/.config/kansoku/kansoku.env and honors KANSOKU_ENV_FILE', () => {
+    expect(userEnvFile({})).toMatch(/\.config\/kansoku\/kansoku\.env$/);
+    expect(userEnvFile({ KANSOKU_ENV_FILE: '/tmp/x.env' })).toBe('/tmp/x.env');
   });
 });

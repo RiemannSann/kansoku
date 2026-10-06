@@ -38,7 +38,10 @@ vi.mock('@kansoku/core/pro/hooks', () => ({ registerProHooks: vi.fn() }));
 vi.mock('@kansoku/core/pro/aiExtension', () => ({ registerProAiExtension: vi.fn() }));
 vi.mock('@kansoku/core/pro/channels', () => ({ registerProChannels: vi.fn() }));
 vi.mock('@kansoku/core/pro/detectors', () => ({ registerProDetectors: vi.fn() }));
-vi.mock('@server/dotenv.js', () => ({ loadDotenv: vi.fn() }));
+vi.mock('@server/dotenv.js', () => ({
+  loadDotenv: vi.fn(),
+  userEnvFile: vi.fn(() => '/nonexistent/kansoku.env'),
+}));
 
 const { initServerHostRuntime } = await import('@server/runtimeInit.js');
 

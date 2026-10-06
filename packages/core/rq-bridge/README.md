@@ -20,7 +20,7 @@
    chmod 600 ~/.config/kansoku/rq_license
    ```
 
-3. 在仓库根目录的 `.env`（已被 git 忽略）里写：
+3. 在 `~/.config/kansoku/kansoku.env` 里写（打包后的 Mac App、`pnpm dev`、`pnpm dev:desktop` 都会读）：
 
    ```bash
    MARKET_PROVIDER_CN=ricequant
@@ -28,7 +28,12 @@
    RQ_LICENSE_FILE=~/.config/kansoku/rq_license
    ```
 
-   `RQ_BRIDGE_PATH` 可以改桥脚本的位置，默认是本目录的 `rq_bridge.py`。
+   开发时也可以写在仓库根目录的 `.env`（已被 git 忽略），两边都有的键以仓库 `.env` 为准。
+   `KANSOKU_ENV_FILE` 可以改这个配置文件的位置。改完要重启 App。
+
+   `RQ_BRIDGE_PATH` 可以改桥脚本的位置：开发时默认是本目录的 `rq_bridge.py`，
+   打包后的 App 默认用随 App 打包的 `Kansoku.app/Contents/Resources/rq-bridge/rq_bridge.py`。
+   Python 和 `rqdatac` 不随 App 打包，用的是上面 `RQ_PYTHON` 指定的那个。
 
 ## 工作方式
 

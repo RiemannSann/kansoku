@@ -13,7 +13,7 @@ import {
   createWatchedMarketsStore,
   setActiveWatchedMarketsStore,
 } from '@kansoku/core/marketdata/watchedMarketsStore';
-import { loadDotenv } from './dotenv.js';
+import { loadDotenv, userEnvFile } from './dotenv.js';
 import { initAuthUrlOpener, type AuthUrlOpener } from '@kansoku/core/credentials/authUrlOpener';
 import { initCredentialProvider } from '@kansoku/core/credentials/registry';
 import type { CredentialProvider } from '@kansoku/core/credentials/types';
@@ -41,6 +41,7 @@ export interface ServerRuntimeOptions {
 // no encrypted bundle and no loadPro step at all.
 export async function initServerHostRuntime(opts?: ServerRuntimeOptions): Promise<void> {
   loadDotenv();
+  loadDotenv(userEnvFile());
 
   // 1h prompt-cache TTL: trigger-driven commentary can go long, irregular
   // stretches between runs, so the default 5-min ephemeral TTL would expire

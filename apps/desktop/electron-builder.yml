@@ -72,6 +72,13 @@ extraResources:
     to: skills
   - from: dist-agent-kit
     to: kansoku-agent-kit
+  # 米筐（RiceQuant）A 股行情桥和同花顺自选导入脚本。只是 Python 源码，
+  # 由用户在 ~/.config/kansoku/kansoku.env 里指定的 RQ_PYTHON 运行。
+  - from: ../../packages/core/rq-bridge
+    to: rq-bridge
+    filter:
+      - '*.py'
+      - README.md
 extraFiles:
   - from: node_modules/electron-sparkle-updater/native/vendor/Sparkle.framework
     to: Frameworks/Sparkle.framework
