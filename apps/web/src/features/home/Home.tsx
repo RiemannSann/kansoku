@@ -24,7 +24,7 @@ import { EventCalendar } from './EventCalendar';
 import { HomeEventTimeline } from './HomeEventTimeline';
 import { HomeTopStrip } from './HomeTopStrip';
 import { indexSymbolsFor } from './indexSymbols';
-import { isCnTradingTime } from './cnSession';
+import { homeTradingLayout } from './cnSession';
 import type { Market } from '../settings/types';
 import { MarketPanorama } from './MarketPanorama';
 import { PositionsCard } from './PositionsCard';
@@ -215,9 +215,10 @@ export function Home() {
     : [date, ...candidateDates].sort().reverse();
 
   const session = board?.session ?? null;
-  // 关注 A 股时，北京时间盘中也按「看盘」布局显示（此时美股是夜里）
-  const cnTrading = Boolean(watched?.markets?.includes('CN')) && isCnTradingTime();
-  const trading = isToday && (session === 'pre' || session === 'regular' || cnTrading);
+  // 关注 A 股时，北京时间盘中（含午休）也按「看盘」布局显示（此时美股是夜里）；
+  // 只看 A 股时美股盘前不算
+  const layout = homeTradingLayout(session, watched?.markets);
+  const trading = isToday && layout.trading;
   const after = isToday && !trading;
   const watching = new Set(board?.rows.map((r) => r.symbol) ?? []);
   const shortcuts = [
@@ -298,7 +299,7 @@ export function Home() {
           <div className={`home-grid ${stylex.props(styles.grid).className}`}>
             <div className="home-main">
               <SectionTitleWithAge
-                label={session === 'pre' ? '隔夜行情 · 自选 + 持仓' : '看盘 · 自选 + 持仓'}
+                label={layout.overnightLabel ? '隔夜行情 · 自选 + 持仓' : '看盘 · 自选 + 持仓'}
                 at={boardSnapshotAt}
               />
               <SymbolGrid
