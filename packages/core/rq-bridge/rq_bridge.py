@@ -244,6 +244,38 @@ def m_flow(params):
     return rows
 
 
+
+def m_flow_totals(params):
+    """一批股票当天的主力净流入合计（买入额 − 卖出额），首页一次取完，不逐只排队。"""
+    ids = [to_rq(s) for s in params["symbols"]]
+    if not ids:
+        return {}
+    day = latest_trading_day()
+    df = rq.get_capital_flow(ids, start_date=day, end_date=day, frequency="1m")
+    if df is None or df.empty:
+        return {}
+    net = (df["buy_value"].fillna(0) - df["sell_value"].fillna(0)).groupby(level=0).sum()
+    return {from_rq(order_book_id): round(float(value), 2) for order_book_id, value in net.items()}
+
+
+def m_profiles(params):
+    """名称 + 申万一级行业，首页全景按行业分组用。"""
+    ids = [to_rq(s) for s in params["symbols"]]
+    out: dict[str, dict] = {}
+    if not ids:
+        return out
+    found = rq.instruments(ids) or []
+    for inst in found if isinstance(found, list) else [found]:
+        out.setdefault(from_rq(inst.order_book_id), {})["name"] = inst.symbol
+    df = rq.get_instrument_industry(ids, source="sws", level=1)
+    if df is not None and not df.empty:
+        for order_book_id, row in df.iterrows():
+            industry = row.get("first_industry_name")
+            if isinstance(industry, str) and industry:
+                out.setdefault(from_rq(order_book_id), {})["industry"] = industry
+    return out
+
+
 def m_news(params):
     order_book_id = to_rq(params["symbol"])
     limit = max(1, min(int(params.get("limit", 6)), 50))
@@ -290,6 +322,8 @@ METHODS = {
     "snapshot": m_snapshot,
     "names": m_names,
     "flow": m_flow,
+    "flow_totals": m_flow_totals,
+    "profiles": m_profiles,
     "news": m_news,
     "market_caps": m_market_caps,
 }

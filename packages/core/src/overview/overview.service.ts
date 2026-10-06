@@ -21,6 +21,7 @@ import { buildHomeEvents } from './homeEvents.js';
 import { getIndustryPanorama } from './industryPanorama.js';
 import { aggregateStats, type StatsRow } from '../cockpit/stats.js';
 import { getProvider } from '../marketdata/registry.js';
+import { getQuotesRouted } from '../marketdata/streamRouting.js';
 import { easternDate } from '../marketdata/session.js';
 import { listCharts, loadChart } from '../charts/store.js';
 import { marketOf } from '../symbols/symbol.utils.js';
@@ -79,8 +80,7 @@ async function buildRecap(date: string): Promise<OverviewRecap> {
   const latestMetas = [...bySymbol.values()];
   const [quoteBySymbol, dayPctBySymbol, docs, commentsList, cached] = await Promise.all([
     isToday
-      ? getProvider()
-          .getQuotes(symbols)
+      ? getQuotesRouted(symbols)
           .then((quotesRes) => {
             const map = new Map<string, ReturnType<typeof normalizeQuote>>();
             for (const q of quotesRes) {

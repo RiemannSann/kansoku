@@ -10,13 +10,16 @@ import {
 } from '../src/overview/homeExtras.js';
 
 const provider: Partial<MarketDataProvider> = {};
+// A 股切到另一个行情源时用；null 表示所有市场都走 provider
+let cnProvider: Partial<MarketDataProvider> | null = null;
 
 vi.mock('../src/marketdata/registry.js', () => ({
-  getProvider: () => provider,
+  getProvider: (market?: string) => (market === 'CN' && cnProvider ? cnProvider : provider),
 }));
 
 beforeEach(() => {
   resetHomeExtrasForTests();
+  cnProvider = null;
   provider.getFlow = vi.fn(async () => [
     { time: 't1', inflow: '100.5' },
     { time: 't2', inflow: -40 },
@@ -60,7 +63,12 @@ describe('flowEligible', () => {
 
 describe('netInflow', () => {
   it('sums numeric inflows and skips unparsable rows', () => {
-    expect(netInflow([{ time: 'a', inflow: '1.5' }, { time: 'b', inflow: 2 }])).toBeCloseTo(3.5);
+    expect(
+      netInflow([
+        { time: 'a', inflow: '1.5' },
+        { time: 'b', inflow: 2 },
+      ]),
+    ).toBeCloseTo(3.5);
     expect(netInflow([{ time: 'a', inflow: 'x' }])).toBe(0);
   });
 });
@@ -164,5 +172,32 @@ describe('buildHomeExtras', () => {
     await buildHomeExtras([]);
     await homeExtrasWarm();
     expect(order.indexOf('caps')).toBeGreaterThan(order.lastIndexOf('flow'));
+  });
+
+  it('sends A-share symbols to their own source in one batch, with names and industries', async () => {
+    const cn = {
+      getNetInflows: vi.fn(async (symbols: string[]) =>
+        Object.fromEntries(symbols.map((s) => [s, 5e7])),
+      ),
+      getMarketCaps: vi.fn(async () => ({ '600519.SH': 1.8e12 })),
+      getSecurityProfiles: vi.fn(async () => ({
+        '600519.SH': { name: '贵州茅台', industry: '食品饮料' },
+      })),
+    };
+    cnProvider = cn;
+    provider.getMarketCaps = vi.fn(async () => ({ 'NVDA.US': 4e12 }));
+
+    await buildHomeExtras(['600519.SH', '300750.SZ']);
+    await homeExtrasWarm();
+    const extras = await buildHomeExtras(['600519.SH', '300750.SZ']);
+    await homeExtrasWarm();
+
+    expect(cn.getNetInflows).toHaveBeenCalledTimes(1);
+    expect(cn.getNetInflows).toHaveBeenCalledWith(['600519.SH', '300750.SZ']);
+    expect(provider.getFlow).not.toHaveBeenCalledWith('600519.SH');
+    expect(extras.flows['300750.SZ']).toBe(5e7);
+    expect(extras.caps).toMatchObject({ 'NVDA.US': 4e12, '600519.SH': 1.8e12 });
+    expect(extras.profiles).toEqual({ '600519.SH': { name: '贵州茅台', industry: '食品饮料' } });
+    expect(cn.getSecurityProfiles).toHaveBeenCalledTimes(1);
   });
 });

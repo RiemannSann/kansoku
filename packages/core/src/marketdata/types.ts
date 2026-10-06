@@ -67,6 +67,11 @@ export interface EarningsCalendarEntry {
 export type MacroCalendarResult =
   { supported: true; items: MacroEventItem[] } | { supported: false };
 
+export interface SecurityProfile {
+  name?: string;
+  industry?: string;
+}
+
 export interface IndustryRankResult {
   name: string;
   chg: number | null;
@@ -119,4 +124,8 @@ export interface MarketDataProvider {
   getMarketTemp?(market: Market): Promise<MarketTempResult | null>;
   getIndustryRank?(market: Market): Promise<IndustryRankResult[]>;
   getMarketCaps?(symbols: string[]): Promise<Record<string, number>>;
+  // Batch variants for the home page: one round trip for the whole watch list instead
+  // of one queued request per symbol.
+  getNetInflows?(symbols: string[]): Promise<Record<string, number>>;
+  getSecurityProfiles?(symbols: string[]): Promise<Record<string, SecurityProfile>>;
 }

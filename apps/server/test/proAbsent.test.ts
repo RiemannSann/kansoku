@@ -37,6 +37,7 @@ describe('pro-absent HTTP surface', () => {
         'options-walls': 'absent',
       },
       hasEncBundle: false,
+      marketProviders: expect.any(Object),
     });
   });
 });

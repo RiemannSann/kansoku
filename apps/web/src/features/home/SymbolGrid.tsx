@@ -38,6 +38,10 @@ const styles = stylex.create({
     fontSize: fontSizes.base,
     fontWeight: 600,
   },
+  symbolCardName: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+  },
   symbolCardQuote: {
     color: colors.textSecondary,
     fontSize: fontSizes.base,
@@ -160,6 +164,8 @@ export function isMover(entry: GridEntry, today: string | null): boolean {
 
 interface GridEntry {
   symbol: string;
+  /** 数据源给得出名称时才有（目前是 A 股） */
+  name?: string;
   quote: QuoteCell | null;
   row: OverviewRow | null;
   flow: number | null;
@@ -203,8 +209,10 @@ export function buildGridEntries({
     (s) => !indexSet.has(s) && isCardWorthySymbol(s),
   );
   const flows = board?.flows ?? {};
+  const profiles = board?.profiles ?? {};
   const entries = symbols.map((symbol) => ({
     symbol,
+    name: profiles[symbol]?.name,
     quote: quoteBySymbol.get(symbol) ?? null,
     row: rowBySymbol.get(symbol) ?? null,
     flow: flows[symbol] ?? null,
@@ -218,7 +226,7 @@ export function buildGridEntries({
 }
 
 function GridCard({ entry }: { entry: GridEntry }) {
-  const { symbol, quote, row, flow, owned, earningsDate } = entry;
+  const { symbol, name, quote, row, flow, owned, earningsDate } = entry;
   const flowToneValue = flowTone(flow);
   const flowStyle =
     flowToneValue === 'up'
@@ -235,6 +243,7 @@ function GridCard({ entry }: { entry: GridEntry }) {
         <span className={`sym ${stylex.props(styles.symbolCardSymbol).className}`}>
           {symbol.replace(/\.US$/, '')}
         </span>
+        {name && <span {...stylex.props(styles.symbolCardName)}>{name}</span>}
         {row?.direction && (
           <Badge tone={directionTone(row.direction)}>{DIRECTION_LABEL[row.direction]}</Badge>
         )}
@@ -305,7 +314,7 @@ function TailCell({ entry }: { entry: GridEntry }) {
       href={`/symbol/${encodeURIComponent(entry.symbol)}`}
     >
       <span className={`sym ${stylex.props(styles.tailSymbol).className}`}>
-        {entry.symbol.replace(/\.US$/, '')}
+        {entry.name ?? entry.symbol.replace(/\.US$/, '')}
       </span>
       {pct != null && <Num value={pct} diff suffix="%" />}
       {entry.flow != null && (

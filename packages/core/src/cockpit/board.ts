@@ -9,7 +9,7 @@ import type {
 } from '@kansoku/shared/types';
 import { listComments } from '../ai/personas/comments.js';
 import { listFollowedSymbols } from '../ai/personas/follows.js';
-import { getProvider } from '../marketdata/registry.js';
+import { getQuotesRouted } from '../marketdata/streamRouting.js';
 import { classifySession, easternDate } from '../marketdata/session.js';
 import { predictionStale } from '../platform/staleness.js';
 import { listCharts, loadChart } from '../charts/store.js';
@@ -80,9 +80,7 @@ export async function buildOverviewBoard(
 
   const nowMs = Date.now();
   const [quotesRes, docs, commentsList, extras] = await Promise.all([
-    getProvider()
-      .getQuotes(symbols)
-      .catch(() => []),
+    getQuotesRouted(symbols).catch(() => []),
     Promise.all([...bySymbol.values()].map((m) => loadChart(m.id))),
     Promise.all(symbols.map((s) => listComments(s, today))),
     buildHomeExtras(symbols),

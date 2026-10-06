@@ -1,7 +1,13 @@
 import type { MarketTemp } from '@kansoku/shared/types';
 import type { FlowRow } from '../analysis/simple.js';
 import { getProvider } from '../marketdata/registry.js';
-import { hasAnyWatchlist, readAllWatchlists } from '../marketdata/streamRouting.js';
+import {
+  groupByProvider,
+  hasAnyWatchlist,
+  readAllWatchlists,
+} from '../marketdata/streamRouting.js';
+import type { SecurityProfile } from '../marketdata/types.js';
+import { marketOf } from '../symbols/symbol.utils.js';
 
 const FLOW_TTL_MS = 60_000;
 const OPTION_SYMBOL_RE = /\d{6}[CP]\d+/;
@@ -21,12 +27,15 @@ interface HomeExtras {
   flows_at: number | null;
   market: MarketTemp | null;
   caps: Record<string, number>;
+  profiles: Record<string, SecurityProfile>;
 }
 
 let flowCache = new Map<string, { at: number; value: number | null }>();
 let tempCache: { at: number; value: MarketTemp | null } | null = null;
 let watchCache: { at: number; symbols: string[] } | null = null;
 let capsCache: { at: number; value: Record<string, number> } | null = null;
+// Names and industries barely change; fetched once per symbol per process.
+let profileCache = new Map<string, SecurityProfile>();
 let warming: Promise<void> | null = null;
 let warmQueued: string[] | null = null;
 const extrasListeners = new Set<() => void>();
@@ -36,6 +45,7 @@ export function resetHomeExtrasForTests(): void {
   tempCache = null;
   watchCache = null;
   capsCache = null;
+  profileCache = new Map();
   warming = null;
   warmQueued = null;
   extrasListeners.clear();
@@ -58,15 +68,31 @@ async function getCaps(symbols: string[]): Promise<Record<string, number>> {
     const missing = symbols.filter((s) => !(s in capsCache!.value));
     if (!missing.length) return capsCache.value;
   }
-  const provider = getProvider();
-  if (!provider.getMarketCaps) return capsCache?.value ?? {};
-  try {
-    const value = await provider.getMarketCaps(symbols);
-    capsCache = { at: Date.now(), value };
-    return value;
-  } catch {
-    return capsCache?.value ?? {};
-  }
+  const groups = groupByProvider(symbols).filter(([provider]) => provider.getMarketCaps);
+  if (!groups.length) return capsCache?.value ?? {};
+  const results = await Promise.allSettled(
+    groups.map(([provider, group]) => provider.getMarketCaps!(group)),
+  );
+  const fresh = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+  if (!fresh.length) return capsCache?.value ?? {};
+  const value = Object.assign({}, ...fresh) as Record<string, number>;
+  capsCache = { at: Date.now(), value };
+  return value;
+}
+
+async function getProfiles(symbols: string[]): Promise<void> {
+  const missing = symbols.filter((s) => !profileCache.has(s));
+  const groups = groupByProvider(missing).filter(([provider]) => provider.getSecurityProfiles);
+  await Promise.all(
+    groups.map(async ([provider, group]) => {
+      try {
+        const profiles = await provider.getSecurityProfiles!(group);
+        for (const symbol of group) profileCache.set(symbol, profiles[symbol] ?? {});
+      } catch {
+        // Leave them missing so the next warm retries.
+      }
+    }),
+  );
 }
 
 export function netInflow(rows: FlowRow[]): number {
@@ -77,7 +103,7 @@ export function netInflow(rows: FlowRow[]): number {
 }
 
 async function fetchNetInflow(symbol: string): Promise<number | null> {
-  const provider = getProvider();
+  const provider = getProvider(marketOf(symbol));
   if (!provider.getFlow) return null;
   try {
     return netInflow(await provider.getFlow(symbol));
@@ -109,9 +135,18 @@ async function getFlows(symbols: string[]): Promise<Record<string, number | null
     const cached = flowCache.get(s);
     return !cached || now - cached.at >= FLOW_TTL_MS;
   });
-  if (stale.length) {
-    const values = await mapWithConcurrency(stale, FLOW_CONCURRENCY, fetchNetInflow);
-    stale.forEach((symbol, i) => flowCache.set(symbol, { at: now, value: values[i] }));
+  const single: string[] = [];
+  for (const [provider, group] of groupByProvider(stale)) {
+    if (!provider.getNetInflows) {
+      single.push(...group);
+      continue;
+    }
+    const totals = await provider.getNetInflows(group).catch(() => null);
+    for (const symbol of group) flowCache.set(symbol, { at: now, value: totals?.[symbol] ?? null });
+  }
+  if (single.length) {
+    const values = await mapWithConcurrency(single, FLOW_CONCURRENCY, fetchNetInflow);
+    single.forEach((symbol, i) => flowCache.set(symbol, { at: now, value: values[i] }));
   }
   return Object.fromEntries(symbols.map((s) => [s, flowCache.get(s)?.value ?? null]));
 }
@@ -191,6 +226,12 @@ function snapshotExtras(symbols: string[], market: MarketTemp | null): HomeExtra
     flows_at: hasFlow ? Date.now() : null,
     market,
     caps: capsCache?.value ?? {},
+    profiles: Object.fromEntries(
+      symbols.flatMap((s) => {
+        const profile = profileCache.get(s);
+        return profile && (profile.name || profile.industry) ? [[s, profile]] : [];
+      }),
+    ),
   };
 }
 
@@ -204,9 +245,15 @@ function flowsNeedRefresh(symbols: string[]): boolean {
 
 function capsNeedRefresh(symbols: string[]): boolean {
   if (!symbols.length) return false;
-  if (!getProvider().getMarketCaps) return false;
+  if (!symbols.some((s) => getProvider(marketOf(s)).getMarketCaps)) return false;
   if (!capsCache || Date.now() - capsCache.at >= CAPS_TTL_MS) return true;
   return symbols.some((s) => !(s in capsCache!.value));
+}
+
+function profilesNeedFetch(symbols: string[]): boolean {
+  return symbols.some(
+    (s) => !profileCache.has(s) && Boolean(getProvider(marketOf(s)).getSecurityProfiles),
+  );
 }
 
 function notifyExtrasChange(): void {
@@ -218,10 +265,13 @@ function startWarm(symbols: string[]): void {
     warmQueued = [...new Set([...(warmQueued ?? []), ...symbols])];
     return;
   }
-  if (!flowsNeedRefresh(symbols) && !capsNeedRefresh(symbols)) return;
+  if (!flowsNeedRefresh(symbols) && !capsNeedRefresh(symbols) && !profilesNeedFetch(symbols)) {
+    return;
+  }
   warming = (async () => {
     if (symbols.length) await getFlows(symbols).catch(() => {});
     await getCaps(symbols);
+    await getProfiles(symbols);
     notifyExtrasChange();
   })().finally(() => {
     warming = null;

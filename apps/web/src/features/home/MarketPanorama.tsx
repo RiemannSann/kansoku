@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import type { IndustryPanorama, PortfolioSummary, QuoteCell } from '@kansoku/shared/types';
+import type {
+  IndustryPanorama,
+  OverviewBoard,
+  PortfolioSummary,
+  QuoteCell,
+} from '@kansoku/shared/types';
 import { industryOf, UNCLASSIFIED_INDUSTRY } from '@kansoku/shared/industryMap';
+import { isRedUp } from '@web/lib/colorConvention';
 import { signed } from '@web/lib/format';
 import { usePollingQuery } from '@web/lib/apiHooks';
 import { client } from '@web/lib/client';
@@ -13,6 +19,7 @@ import { squarify, type TreemapRect } from './treemap';
 
 interface PanoramaTile {
   symbol: string;
+  name?: string;
   pct: number | null;
   turnover: number;
   cap: number | null;
@@ -25,6 +32,17 @@ export interface PanoramaGroup {
   cap: number;
   weightedPct: number | null;
   tiles: PanoramaTile[];
+}
+
+type SymbolProfiles = NonNullable<OverviewBoard['profiles']>;
+
+/** A 股代码不好认，有名称时显示名称（贵州茅台），美股仍显示代码 */
+function tileLabel(t: PanoramaTile): string {
+  return t.name ?? t.symbol.replace(/\.US$/, '');
+}
+
+function tileTitle(t: PanoramaTile): string {
+  return t.name ? `${t.symbol} ${t.name}` : t.symbol;
 }
 
 export function heatClass(pct: number | null): string {
@@ -42,6 +60,7 @@ export function buildPanoramaGroups(
   quotes: QuoteCell[],
   portfolio: PortfolioSummary | null,
   caps: Record<string, number> = {},
+  profiles: SymbolProfiles = {},
 ): PanoramaGroup[] {
   const owned = new Set((portfolio?.positions ?? []).map((p) => p.symbol));
   const indexSet = new Set(INDEX_SYMBOLS);
@@ -50,12 +69,13 @@ export function buildPanoramaGroups(
     if (indexSet.has(q.symbol) || !isCardWorthySymbol(q.symbol)) continue;
     const tile: PanoramaTile = {
       symbol: q.symbol,
+      name: profiles[q.symbol]?.name,
       pct: q.pct,
       turnover: q.turnover ?? 0,
       cap: caps[q.symbol] ?? null,
       owned: owned.has(q.symbol),
     };
-    const industry = industryOf(q.symbol);
+    const industry = profiles[q.symbol]?.industry ?? industryOf(q.symbol);
     const list = byIndustry.get(industry);
     if (list) list.push(tile);
     else byIndustry.set(industry, [tile]);
@@ -344,14 +364,18 @@ const styles = stylex.create({
   },
 });
 
+// 色块是写死的绿/红两套色阶，红涨绿跌时对调
+const UP_HEAT = isRedUp ? 'R' : 'G';
+const DOWN_HEAT = isRedUp ? 'G' : 'R';
+
 function heatStyle(pct: number | null): stylex.StyleXStyles {
   if (pct == null || (pct > -0.2 && pct <= 0.2)) return styles.tileHeat0;
-  if (pct >= 4) return styles.tileHeatG3;
-  if (pct >= 1.5) return styles.tileHeatG2;
-  if (pct > 0.2) return styles.tileHeatG1;
-  if (pct <= -4) return styles.tileHeatR3;
-  if (pct <= -1.5) return styles.tileHeatR2;
-  return styles.tileHeatR1;
+  if (pct >= 4) return styles[`tileHeat${UP_HEAT}3`];
+  if (pct >= 1.5) return styles[`tileHeat${UP_HEAT}2`];
+  if (pct > 0.2) return styles[`tileHeat${UP_HEAT}1`];
+  if (pct <= -4) return styles[`tileHeat${DOWN_HEAT}3`];
+  if (pct <= -1.5) return styles[`tileHeat${DOWN_HEAT}2`];
+  return styles[`tileHeat${DOWN_HEAT}1`];
 }
 
 function sortByPct(tiles: PanoramaTile[]): PanoramaTile[] {
@@ -380,7 +404,7 @@ function ToolChips({ tools }: { tools: PanoramaGroup[] }) {
               }
               href={`/symbol/${encodeURIComponent(t.symbol)}`}
             >
-              {t.symbol.replace(/\.US$/, '')} {t.pct == null ? '—' : `${signed(t.pct)}%`}
+              {tileLabel(t)} {t.pct == null ? '—' : `${signed(t.pct)}%`}
             </a>
           ))}
         </span>
@@ -462,15 +486,15 @@ function SectorPanel({ group }: { group: PanoramaGroup }) {
           const info = rectMap.get(t.symbol);
           if (!info || info.rect.w < 4 || info.rect.h < 4) return null;
           const { rect, dense } = info;
-          const label = t.symbol.replace(/\.US$/, '');
+          const label = tileLabel(t);
           const pctLabel = t.pct == null ? '—' : `${signed(t.pct)}%`;
           return (
             <Tooltip
               key={t.symbol}
-              content={`${t.symbol}\n${pctLabel}`}
+              content={`${tileTitle(t)}\n${pctLabel}`}
               renderTrigger={
                 <a
-                  aria-label={`${t.symbol} ${pctLabel}`}
+                  aria-label={`${tileTitle(t)} ${pctLabel}`}
                   className={`pano-tile ${heatClass(t.pct)}${t.owned ? ' pano-tile--owned' : ''}${dense ? ' pano-tile--dense' : ''} ${stylex.props(styles.tile, heatStyle(t.pct), t.owned && styles.tileOwned, dense && styles.tileDense).className}`}
                   href={`/symbol/${encodeURIComponent(t.symbol)}`}
                   style={{
@@ -504,12 +528,14 @@ function WatchPanorama({
   quotes,
   portfolio,
   caps,
+  profiles,
 }: {
   quotes: QuoteCell[];
   portfolio: PortfolioSummary | null;
   caps: Record<string, number>;
+  profiles: SymbolProfiles;
 }) {
-  const groups = buildPanoramaGroups(quotes, portfolio, caps);
+  const groups = buildPanoramaGroups(quotes, portfolio, caps, profiles);
   if (!groups.length) return <NoteBlock>行情就绪后展示全景图</NoteBlock>;
   const { main, tools } = splitPanorama(groups);
   const line = panoramaReadLine(groups);
@@ -615,10 +641,12 @@ export function MarketPanorama({
   quotes,
   portfolio,
   caps = {},
+  profiles = {},
 }: {
   quotes: QuoteCell[];
   portfolio: PortfolioSummary | null;
   caps?: Record<string, number>;
+  profiles?: SymbolProfiles;
 }) {
   const [tab, setTab] = useState<'watch' | 'market'>('watch');
   return (
@@ -640,7 +668,7 @@ export function MarketPanorama({
         </button>
       </div>
       {tab === 'watch' ? (
-        <WatchPanorama quotes={quotes} portfolio={portfolio} caps={caps} />
+        <WatchPanorama quotes={quotes} portfolio={portfolio} caps={caps} profiles={profiles} />
       ) : (
         <IndustryPanoramaView />
       )}

@@ -4,7 +4,7 @@ import type { FlowRow } from '../analysis/simple.js';
 import { readCnWatchlist } from './cnWatchlist.js';
 import { getRicequantBridge, RicequantBridgeError, type RicequantCall } from './ricequantBridge.js';
 import { parseShanghai, rqBarTime } from './ricequantTime.js';
-import type { MarketDataProvider, RawQuote } from './types.js';
+import type { MarketDataProvider, RawQuote, SecurityProfile } from './types.js';
 
 // 米筐（rqdatac）数据源，只服务沪深 A 股（.SH / .SZ）。
 // 美股/港股仍走长桥：在 .env 里设 MARKET_PROVIDER_CN=ricequant 即可只把 A 股切过来。
@@ -177,6 +177,16 @@ export function createRicequantProvider(
         symbol,
       });
       return rows.map((row) => ({ time: isoShanghai(row.t), inflow: row.inflow }));
+    },
+
+    async getNetInflows(symbols: string[]): Promise<Record<string, number>> {
+      if (!symbols.length) return {};
+      return request<Record<string, number>>('capital flow', 'flow_totals', { symbols });
+    },
+
+    async getSecurityProfiles(symbols: string[]): Promise<Record<string, SecurityProfile>> {
+      if (!symbols.length) return {};
+      return request<Record<string, SecurityProfile>>('profiles', 'profiles', { symbols });
     },
 
     // 自选股来自本机文件（见 cnWatchlist.ts），不走米筐

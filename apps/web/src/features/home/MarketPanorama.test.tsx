@@ -78,6 +78,20 @@ describe('buildPanoramaGroups', () => {
     const line = panoramaReadLine(buildPanoramaGroups(quotes, portfolio));
     expect(line).toBe('存储最强(+6.00%)、半导体最弱(+1.00%)');
   });
+
+  it('groups A shares by the industry and name the data source gives', () => {
+    const groups = buildPanoramaGroups(
+      [quote('600519.SH', 1, 100), quote('000858.SZ', 2, 50), quote('000001.SH', 0.3, 999)],
+      null,
+      {},
+      {
+        '600519.SH': { name: '贵州茅台', industry: '食品饮料' },
+        '000858.SZ': { name: '五粮液', industry: '食品饮料' },
+      },
+    );
+    expect(groups.map((g) => g.industry)).toEqual(['食品饮料']);
+    expect(groups[0].tiles.map((t) => t.name)).toEqual(['贵州茅台', '五粮液']);
+  });
 });
 
 describe('splitPanorama', () => {

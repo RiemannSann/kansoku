@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   setLicenseManagerForTests,
   type LicenseManager,
@@ -46,6 +46,7 @@ describe('GET /capabilities', () => {
       license: { state: 'unlicensed' },
       features: allFeatures('absent'),
       hasEncBundle: false,
+      marketProviders: expect.any(Object),
     });
   });
 
@@ -61,6 +62,7 @@ describe('GET /capabilities', () => {
       license: { state: 'unlicensed' },
       features: allFeatures('locked'),
       hasEncBundle: true,
+      marketProviders: expect.any(Object),
     });
   });
 
@@ -77,6 +79,7 @@ describe('GET /capabilities', () => {
       license: { state: 'unlicensed' },
       features: allFeatures('locked'),
       hasEncBundle: false,
+      marketProviders: expect.any(Object),
     });
   });
 
@@ -99,7 +102,27 @@ describe('GET /capabilities', () => {
       license: { state: 'licensed', deviceName: 'my-mac', maskedKey: '••••7890' },
       features: allFeatures('active'),
       hasEncBundle: false,
+      marketProviders: expect.any(Object),
     });
+  });
+
+  it('reports which data source serves each market', async () => {
+    vi.stubEnv('MARKET_PROVIDER', '');
+    vi.stubEnv('MARKET_PROVIDER_US', '');
+    vi.stubEnv('MARKET_PROVIDER_HK', '');
+    vi.stubEnv('MARKET_PROVIDER_CN', 'ricequant');
+    try {
+      setProPresent(false);
+      setLicenseManagerForTests(fakeLicenseManager());
+      const res = await tsukiRequest('/api/capabilities');
+      expect((await res.json()).data.marketProviders).toEqual({
+        US: 'longbridge',
+        HK: 'longbridge',
+        CN: 'ricequant',
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('keeps the license status route working when pro is absent (does not 404)', async () => {

@@ -151,11 +151,13 @@ def main() -> None:
 
     lines = [f"# 由同花顺自选导出（{folder}）", "# 一行一只；# 后面是注释；可以手动增删", ""]
     seen: set[str] = set()
+    written = 0
     for name, symbols in chosen:
         fresh = [s for s in symbols if s not in seen]
         seen.update(fresh)
         if not fresh:
             continue
+        written += 1
         lines.append(f"# {name}")
         lines.extend(fresh)
         lines.append("")
@@ -171,7 +173,7 @@ def main() -> None:
         backup.write_text(out.read_text())
         print(f"原文件已备份到 {backup}")
     out.write_text(text)
-    print(f"已写入 {out}：{len(chosen)} 个分组，共 {len(seen)} 只")
+    print(f"已写入 {out}：{written} 个分组，共 {len(seen)} 只")
 
 
 if __name__ == "__main__":

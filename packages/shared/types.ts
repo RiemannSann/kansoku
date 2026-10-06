@@ -870,6 +870,8 @@ export interface OverviewBoard {
   flows_at?: number | null;
   market?: MarketTemp | null;
   caps?: Record<string, number>;
+  /** Display name and industry per symbol, where the data source knows them. */
+  profiles?: Record<string, { name?: string; industry?: string }>;
 }
 
 export interface HomeEventItem {

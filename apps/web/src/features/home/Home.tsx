@@ -24,6 +24,7 @@ import { EventCalendar } from './EventCalendar';
 import { HomeEventTimeline } from './HomeEventTimeline';
 import { HomeTopStrip } from './HomeTopStrip';
 import { indexSymbolsFor } from './indexSymbols';
+import { isCnTradingTime } from './cnSession';
 import type { Market } from '../settings/types';
 import { MarketPanorama } from './MarketPanorama';
 import { PositionsCard } from './PositionsCard';
@@ -214,7 +215,9 @@ export function Home() {
     : [date, ...candidateDates].sort().reverse();
 
   const session = board?.session ?? null;
-  const trading = isToday && (session === 'pre' || session === 'regular');
+  // 关注 A 股时，北京时间盘中也按「看盘」布局显示（此时美股是夜里）
+  const cnTrading = Boolean(watched?.markets?.includes('CN')) && isCnTradingTime();
+  const trading = isToday && (session === 'pre' || session === 'regular' || cnTrading);
   const after = isToday && !trading;
   const watching = new Set(board?.rows.map((r) => r.symbol) ?? []);
   const shortcuts = [
@@ -228,6 +231,7 @@ export function Home() {
         quotes={quoteSnap?.quotes ?? []}
         portfolio={portfolio ?? null}
         caps={board?.caps ?? {}}
+        profiles={board?.profiles ?? {}}
       />
     </>
   );
