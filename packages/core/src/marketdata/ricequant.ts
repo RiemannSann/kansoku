@@ -81,6 +81,7 @@ export function toRawBars(rows: BridgeBar[], period: string): RawBar[] {
       low: row.low,
       close: row.close,
       volume: row.volume,
+      ...(row.turnover > 0 ? { turnover: row.turnover } : {}),
     });
   }
   return out;

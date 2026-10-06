@@ -7,6 +7,8 @@ export interface RawBar {
   low: string | number;
   close: string | number;
   volume: string | number;
+  /** 成交额（元）；米筐分钟线带，用来算同花顺口径的均价线（累计成交额 ÷ 累计成交量） */
+  turnover?: number;
 }
 
 export interface LinePoint {
@@ -744,6 +746,30 @@ export interface QuoteDepth {
   asks: DepthLevel[];
   /** 开盘集合竞价阶段：买一 = 卖一 = 虚拟撮合价 */
   auction: boolean;
+}
+
+/** 分时图的一个点 = 一分钟 */
+export interface TimesharePoint {
+  /** 0–239：09:30–11:30 是 0–119，13:00–15:00 是 120–239（09:25 竞价成交并进第 0 分钟） */
+  slot: number;
+  /** 这一分钟最后的价格 */
+  price: number;
+  /** 均价 = 当天到这一分钟为止的累计成交额 ÷ 累计成交量（同花顺口径） */
+  avg: number | null;
+  /** 这一分钟的成交量（股） */
+  volume: number;
+}
+
+/** A 股分时图：横轴固定 240 分钟，午休压缩掉 */
+export interface Timeshare {
+  symbol: string;
+  /** 图上这一天（北京日期）；开盘前显示上一个交易日 */
+  date: string;
+  prevClose: number | null;
+  points: TimesharePoint[];
+  /** 当天分钟线没取到，只有 App 打开之后用快照拼出来的部分 */
+  partial: boolean;
+  asOf: string | null;
 }
 
 export interface QuoteSnapshot {

@@ -115,7 +115,15 @@ describe('ricequant provider', () => {
     const bars = await provider.getKline('600519.SH', '60m', 2);
     expect(call).toHaveBeenCalledWith('kline', { symbol: '600519.SH', period: '1h', count: 2 });
     expect(bars).toEqual([
-      { time: iso('2026-09-30 14:00:00'), open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 },
+      {
+        time: iso('2026-09-30 14:00:00'),
+        open: 1,
+        high: 2,
+        low: 0.5,
+        close: 1.5,
+        volume: 10,
+        turnover: 15,
+      },
     ]);
   });
 

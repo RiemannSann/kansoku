@@ -27,11 +27,9 @@ import { ReanalyzeStrip } from './ReanalyzeStrip';
 import { conclusionOutdated } from '../charts/intraday/ConclusionCard';
 import { PredictionTab } from '../charts/intraday/tabs/PredictionTab';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
-import {
-  buildDepthTabs,
-  buildSharedSidebarTabs,
-  defaultSidebarTab,
-} from './sharedSidebarTabs';
+import { TimeshareChart } from '../charts/timeshare/TimeshareChart';
+import { useTimeshareMode } from '../charts/timeshare/useTimeshareMode';
+import { buildDepthTabs, buildSharedSidebarTabs, defaultSidebarTab } from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
 import { useCockpitComments } from './useCockpitComments';
 import { useCockpitEnv } from './useCockpitEnv';
@@ -232,6 +230,7 @@ export function SymbolCockpit({ sym }: { sym: string }) {
   } = useCockpitReviewState(sym);
 
   const [activeTab, setActiveTab] = useState(() => defaultSidebarTab(sym));
+  const timeshare = useTimeshareMode(sym);
   const { comments, error: commentsError, loaded: commentsLoaded } = useCockpitComments(sym);
   const { unread, latestAlert } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
 
@@ -393,7 +392,18 @@ export function SymbolCockpit({ sym }: { sym: string }) {
                 {cnName ? `${sym} ${cnName}` : sym}
               </span>
               {degraded && <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />}
-              <IntradayTimeframeSwitch activeTf={activeIntradayTf} onChange={setIntradayTf} />
+              <IntradayTimeframeSwitch
+                activeTf={activeIntradayTf}
+                onChange={(tf) => {
+                  timeshare.setActive(false);
+                  setIntradayTf(tf);
+                }}
+                timeshare={
+                  timeshare.available
+                    ? { active: timeshare.active, onSelect: () => timeshare.setActive(true) }
+                    : undefined
+                }
+              />
               <AnalysisTimeline
                 rows={analysesRows}
                 activeId={latestId}
@@ -495,6 +505,7 @@ export function SymbolCockpit({ sym }: { sym: string }) {
               onTabChange={setActiveTab}
               dock={<ChatDock chartId={doc.id} docCreatedAt={doc.created_at} />}
               live={live}
+              chartOverride={timeshare.active ? <TimeshareChart symbol={sym} /> : undefined}
             />
           </div>
         </div>

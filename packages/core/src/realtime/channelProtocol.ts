@@ -17,6 +17,7 @@ import type { Connection } from './connection.js';
 import { subscribeEvents } from './events.js';
 import { subscribePosition } from './position.js';
 import { subscribeQuotes } from './quotes.js';
+import { subscribeTimeshare } from './timeshare.js';
 
 const MAX_CHANNELS_PER_SOCKET = 16;
 
@@ -31,6 +32,7 @@ const STATIC_KINDS = [
   'annotations',
   'events',
   'depth',
+  'timeshare',
 ] as const;
 
 export interface WsSub {
@@ -88,6 +90,10 @@ export function parseWsMessage(raw: unknown): WsClientMessage | null {
   if (msg.kind === 'preview') {
     if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
     return { op: 'sub', key: msg.key, kind: 'preview', symbol: msg.symbol };
+  }
+  if (msg.kind === 'timeshare') {
+    if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
+    return { op: 'sub', key: msg.key, kind: 'timeshare', symbol: msg.symbol };
   }
   if (msg.kind === 'depth') {
     if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
@@ -164,6 +170,8 @@ async function attachChannel(msg: WsSub, push: (envelope: string) => void): Prom
   if (msg.kind === 'annotations') return attachAnnotations(msg.symbol as string, push);
   if (msg.kind === 'events')
     return subscribeEvents(msg.symbol != null ? normalizeSymbol(msg.symbol) : null, push);
+  if (msg.kind === 'timeshare')
+    return subscribeTimeshare(normalizeSymbol(msg.symbol as string), push);
   if (msg.kind === 'depth') return subscribeDepth(normalizeSymbol(msg.symbol as string), push);
   if (msg.kind === 'board') return subscribeBoard(push);
   const channel = findChannel(msg.kind);

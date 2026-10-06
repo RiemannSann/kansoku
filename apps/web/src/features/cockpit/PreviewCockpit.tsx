@@ -30,11 +30,9 @@ import { CockpitSkeleton } from './CockpitSkeleton';
 import { GenerateAnalysis } from './GenerateAnalysis';
 import { GenerateAnalysisCta } from './GenerateAnalysisCta';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
-import {
-  buildDepthTabs,
-  buildSharedSidebarTabs,
-  defaultSidebarTab,
-} from './sharedSidebarTabs';
+import { TimeshareChart } from '../charts/timeshare/TimeshareChart';
+import { useTimeshareMode } from '../charts/timeshare/useTimeshareMode';
+import { buildDepthTabs, buildSharedSidebarTabs, defaultSidebarTab } from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
 import { useCockpitComments } from './useCockpitComments';
 import { useCockpitEnv } from './useCockpitEnv';
@@ -157,6 +155,7 @@ export function PreviewCockpit({
     setSelectedJournal,
   } = useCockpitReviewState(sym);
   const [activeTab, setActiveTab] = useState(() => defaultSidebarTab(sym));
+  const timeshare = useTimeshareMode(sym);
   const { comments, error: commentsError, loaded: commentsLoaded } = useCockpitComments(sym);
   const { unread } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
   const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', { live: true });
@@ -269,7 +268,18 @@ export function PreviewCockpit({
                 {cnName ? `${sym} ${cnName}` : sym}
               </span>
               {degraded && <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />}
-              <IntradayTimeframeSwitch activeTf={activeIntradayTf} onChange={setIntradayTf} />
+              <IntradayTimeframeSwitch
+                activeTf={activeIntradayTf}
+                onChange={(tf) => {
+                  timeshare.setActive(false);
+                  setIntradayTf(tf);
+                }}
+                timeshare={
+                  timeshare.available
+                    ? { active: timeshare.active, onSelect: () => timeshare.setActive(true) }
+                    : undefined
+                }
+              />
               <AnalysisTimeline
                 rows={analysesRows}
                 activeId={null}
@@ -305,6 +315,7 @@ export function PreviewCockpit({
               activeTab={activeTab}
               onTabChange={setActiveTab}
               live
+              chartOverride={timeshare.active ? <TimeshareChart symbol={sym} /> : undefined}
             />
           </div>
         </div>

@@ -47,6 +47,25 @@ export function cnBucketStart(tsMs: number, periodMinutes: number): number {
   return dayStartMs + startMin * MINUTE_MS;
 }
 
+const OPEN_AUCTION_START_MIN = 9 * 60 + 15;
+
+/**
+ * 分时图的分钟序号 0–239（和 cnBucketStart 同一套归属：竞价归第 0 分钟、11:30 的回报归 119、
+ * 15:00 的收盘回报归 239）。午休中间和 15:01 之后返回 null。
+ */
+export function cnSessionSlot(tsMs: number): number | null {
+  const { dayStartMs } = shanghaiMinuteOfDay(tsMs);
+  const exactMin = (tsMs - dayStartMs) / MINUTE_MS;
+  if (exactMin < OPEN_AUCTION_START_MIN) return null;
+  if (exactMin < AM_OPEN) return 0;
+  if (exactMin < AM_CLOSE) return Math.floor(exactMin - AM_OPEN);
+  if (exactMin < AM_CLOSE + 1) return AM_MINUTES - 1;
+  if (exactMin < PM_OPEN) return null;
+  if (exactMin < PM_CLOSE) return AM_MINUTES + Math.floor(exactMin - PM_OPEN);
+  if (exactMin < PM_CLOSE + 1) return AM_MINUTES + (PM_CLOSE - PM_OPEN) - 1;
+  return null;
+}
+
 const PERIOD_MINUTES: Record<string, number> = {
   '1m': 1,
   '5m': 5,

@@ -8,6 +8,7 @@ export type ChannelSpec =
   | { kind: 'analyses'; symbol: string }
   | { kind: 'position'; symbol: string }
   | { kind: 'depth'; symbol: string }
+  | { kind: 'timeshare'; symbol: string }
   | { kind: 'benchmark'; symbol: string }
   | { kind: 'preview'; symbol: string }
   | { kind: 'board' }
