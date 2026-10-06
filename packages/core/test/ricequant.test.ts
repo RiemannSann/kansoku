@@ -11,7 +11,9 @@ import { RicequantBridgeError } from '../src/marketdata/ricequantBridge.js';
 import { RicequantStream } from '../src/marketdata/ricequantStream.js';
 import {
   cnBucketStart,
+  cnSnapshotFeedsBars,
   isCnActiveWindow,
+  isCnOpenAuction,
   parseShanghai,
   rqBarTime,
 } from '../src/marketdata/ricequantTime.js';
@@ -50,6 +52,23 @@ describe('ricequant time rules', () => {
     expect(cnBucketStart(at('13:00:00'), 60)).toBe(at('13:00:00'));
     expect(cnBucketStart(at('15:00:01'), 5)).toBe(at('14:55:00'));
     expect(cnBucketStart(at('10:44:59'), 15)).toBe(at('10:30:00'));
+  });
+
+  it('only lets session snapshots feed bars and flags the open auction', () => {
+    const at = (t: string) => parseShanghai(`2026-09-30 ${t}`);
+    expect(
+      ['09:14:59', '11:31:00', '12:30:00', '15:01:00', '15:10:03'].map((t) =>
+        cnSnapshotFeedsBars(at(t)),
+      ),
+    ).toEqual([false, false, false, false, false]);
+    expect(
+      ['09:15:00', '09:25:01', '11:30:01', '13:00:01', '15:00:59'].map((t) =>
+        cnSnapshotFeedsBars(at(t)),
+      ),
+    ).toEqual([true, true, true, true, true]);
+    expect(isCnOpenAuction(at('09:15:00'))).toBe(true);
+    expect(isCnOpenAuction(at('09:29:59'))).toBe(true);
+    expect(isCnOpenAuction(at('09:30:00'))).toBe(false);
   });
 
   it('polls fast only inside weekday trading windows', () => {

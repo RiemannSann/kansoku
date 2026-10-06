@@ -29,6 +29,14 @@ export interface BridgeSnapshot {
   low: number | null;
   volume: number;
   turnover: number;
+  /** 指数没有涨跌停，米筐给 0 */
+  limit_up?: number | null;
+  limit_down?: number | null;
+  /** 买一到买五 / 卖一到卖五；集合竞价时买一 = 卖一 = 竞价撮合价 */
+  bids?: Array<number | null>;
+  bid_vols?: Array<number | null>;
+  asks?: Array<number | null>;
+  ask_vols?: Array<number | null>;
 }
 
 interface BridgeNews {

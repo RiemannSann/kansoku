@@ -7,7 +7,9 @@ import type { BridgeSnapshot } from './ricequant.js';
 import { getRicequantBridge } from './ricequantBridge.js';
 import {
   cnBucketStart,
+  cnSnapshotFeedsBars,
   isCnActiveWindow,
+  isCnOpenAuction,
   parseShanghai,
   sameShanghaiDay,
 } from './ricequantTime.js';
@@ -149,18 +151,24 @@ export class RicequantStream implements QuoteStream {
     const ts = parseShanghai(snap.datetime);
     if (!Number.isFinite(ts)) return;
 
-    const signature = `${snap.datetime}|${snap.last}|${snap.volume}`;
+    // 开盘集合竞价时快照的 last 还是昨收、量是 0；真正的竞价撮合价在买一 = 卖一里
+    const auction = isCnOpenAuction(ts);
+    const shown = (auction && snap.volume <= 0 ? indicativePrice(snap) : null) ?? snap.last;
+
+    const signature = `${snap.datetime}|${shown}|${snap.volume}`;
     const changed = this.lastSeen.get(snap.symbol) !== signature;
     this.lastSeen.set(snap.symbol, signature);
 
     const prev = snap.prev_close ?? 0;
-    const pct = prev ? (snap.last / prev - 1) * 100 : null;
+    const pct = prev ? (shown / prev - 1) * 100 : null;
     const cell: QuoteCell = {
       symbol: snap.symbol,
-      session: sessionLabel(classifySession(Math.floor(ts / 1000), 'CN'), 'CN'),
-      last: snap.last,
+      session: auction
+        ? '集合竞价'
+        : sessionLabel(classifySession(Math.floor(ts / 1000), 'CN'), 'CN'),
+      last: shown,
       pct,
-      regularLast: snap.last,
+      regularLast: shown,
       regularPct: pct,
       ...(snap.turnover > 0 ? { turnover: snap.turnover } : {}),
       asOf: new Date(ts).toISOString(),
@@ -170,6 +178,8 @@ export class RicequantStream implements QuoteStream {
     const delta = this.volumeDelta(snap, ts);
     if (!changed) return;
     for (const listener of this.listeners) listener(cell);
+    // 当天还没成交（竞价阶段、停牌）就没有 K 线；收盘后、午休里的快照也不再动 K 线
+    if (!(snap.volume > 0) || !cnSnapshotFeedsBars(ts)) return;
     for (const state of this.candles.values()) {
       if (state.symbol === snap.symbol) this.updateCandle(state, ts, snap.last, delta);
     }
@@ -331,6 +341,13 @@ export class RicequantStream implements QuoteStream {
     if (this.timer) this.cancel(this.timer);
     this.timer = null;
   }
+}
+
+/** 集合竞价的虚拟撮合价：买一 = 卖一时才有意义 */
+function indicativePrice(snap: BridgeSnapshot): number | null {
+  const bid = snap.bids?.[0];
+  const ask = snap.asks?.[0];
+  return bid != null && bid > 0 && bid === ask ? bid : null;
 }
 
 /** 是否落在当天第一根 1 分钟 bar（09:30 前的集合竞价也算） */

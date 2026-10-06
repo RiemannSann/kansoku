@@ -85,6 +85,26 @@ export function isCnActiveWindow(nowMs: number): boolean {
   );
 }
 
+const OPEN_AUCTION_START = 9 * 60 + 15;
+const LAST_FEED_MIN = PM_CLOSE + 1;
+
+/** 开盘集合竞价阶段（09:15–09:30，含 09:25 撮合后到连续竞价开始前的几分钟） */
+export function isCnOpenAuction(tsMs: number): boolean {
+  const { minute } = shanghaiMinuteOfDay(tsMs);
+  return minute >= OPEN_AUCTION_START && minute < AM_OPEN;
+}
+
+/**
+ * 这个时刻的快照还能不能计入当天 K 线：09:15 到 15:00:59，午休（11:31–13:00）除外。
+ * 15:00 收盘撮合的回报会晚一两秒到，所以放宽到 15:00:59；之后的累计量变化
+ * （科创板/创业板 15:05–15:30 盘后固定价格交易）不属于任何一根 K 线，K 线就此定格。
+ */
+export function cnSnapshotFeedsBars(tsMs: number): boolean {
+  const { minute } = shanghaiMinuteOfDay(tsMs);
+  if (minute < OPEN_AUCTION_START || minute >= LAST_FEED_MIN) return false;
+  return minute < AM_CLOSE + 1 || minute >= PM_OPEN;
+}
+
 /** 两个时间点是否是同一个上海自然日 */
 export function sameShanghaiDay(a: number, b: number): boolean {
   return shanghaiMinuteOfDay(a).dayStartMs === shanghaiMinuteOfDay(b).dayStartMs;
