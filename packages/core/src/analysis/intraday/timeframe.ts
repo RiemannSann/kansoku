@@ -17,6 +17,7 @@ import { computeChanStructure } from '../chanlun/index.js';
 import { ClientError } from '../../platform/errors.js';
 import { detectFvgZones } from '../fvg.js';
 import { lastVwap, sessionVwap } from '../vwap.js';
+import type { Market } from '../../symbols/symbol.utils.js';
 import { ema, findSwings, lineData, macd, sma, toTs } from '../indicators.js';
 import { classifyMacdStructure, type MacdStructure } from '../macdStructure.js';
 import { offSessionSignalKeeper } from '../patternScoring.js';
@@ -72,6 +73,7 @@ export function coerceIntradayTimeframe(
   bars: RawBar[],
   key: string,
   emaPeriods = DEFAULT_EMA_PERIODS,
+  market: Market = 'US',
 ): CoercedTimeframe {
   if (!bars || bars.length < MACD_MIN_BARS) {
     throw new ClientError(
@@ -118,7 +120,7 @@ export function coerceIntradayTimeframe(
     return null;
   };
 
-  const vwap = VWAP_TIMEFRAMES.has(key) ? sessionVwap(bars) : undefined;
+  const vwap = VWAP_TIMEFRAMES.has(key) ? sessionVwap(bars, market) : undefined;
   const macdCrosses = findMacdCrosses(hist, timesTs);
   const structure = classifyMacdStructure(dif, hist, timesTs);
   const fvgZones = detectFvgZones(candles);

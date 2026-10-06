@@ -4,6 +4,7 @@ import { MACD_MIN_BARS } from '../analysis/intraday/constants.js';
 import { buildTimeframeView } from '../analysis/intraday/orchestrator.js';
 import { coerceIntradayTimeframe } from '../analysis/intraday/timeframe.js';
 import { getProvider } from '../marketdata/registry.js';
+import { cnCacheFresh } from '../marketdata/ricequantTime.js';
 import { marketOf } from '../symbols/symbol.utils.js';
 
 export const VIEW_PERIODS = ['1m', '30m', 'day', 'week', 'month'] as const;
@@ -13,6 +14,17 @@ const DEFAULT_COUNT = 1000;
 const MAX_COUNT = 2000;
 const CACHE_TTL_MS = 5_000;
 const CACHE_MAX_ENTRIES = 48;
+// A 股：盘中分钟周期 5 秒、日/周/月 60 秒；不开盘的时段行情不动，半小时（跨开收盘立刻失效）。
+// 前端每 15 秒来要一次，不加这层的话月线会每 15 秒把全部历史日线重拉一遍。
+const CN_DAILY_TTL_MS = 60_000;
+const CN_QUIET_TTL_MS = 30 * 60_000;
+const INTRADAY_VIEW = new Set<string>(['1m', '30m']);
+
+function cacheFresh(symbol: string, period: ViewPeriod, at: number, now: number): boolean {
+  if (marketOf(symbol) !== 'CN') return now - at < CACHE_TTL_MS;
+  const activeTtl = INTRADAY_VIEW.has(period) ? CACHE_TTL_MS : CN_DAILY_TTL_MS;
+  return cnCacheFresh(at, now, activeTtl, CN_QUIET_TTL_MS);
+}
 
 export interface ViewTimeframeResult {
   period: ViewPeriod;
@@ -59,7 +71,7 @@ export async function buildViewTimeframe(input: {
 
   const key = `${symbol}|${period}|${count}|${asOf ?? ''}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  if (hit && cacheFresh(symbol, period, hit.at, Date.now())) return hit.value;
 
   const bars = truncateAt(
     await getProvider(marketOf(symbol)).getKline(symbol, period, count, 'all'),
@@ -76,7 +88,7 @@ export async function buildViewTimeframe(input: {
     );
   }
 
-  const coerced = coerceIntradayTimeframe(bars, period);
+  const coerced = coerceIntradayTimeframe(bars, period, undefined, marketOf(symbol));
   const value: ViewTimeframeResult = {
     period,
     bars: bars.length,

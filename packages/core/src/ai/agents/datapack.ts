@@ -36,7 +36,7 @@ import { activeProDetectors } from '../../pro/detectors.js';
 import type { RawPosition } from '../../marketdata/types.js';
 import { easternDate } from '../../marketdata/session.js';
 import { listCharts, loadChart, type ListFilter } from '../../charts/store.js';
-import { marketOf } from '../../symbols/symbol.utils.js';
+import { marketOf, type Market } from '../../symbols/symbol.utils.js';
 import { listComments } from '../personas/comments.js';
 
 const KLINE_COUNT = 150;
@@ -176,9 +176,13 @@ function predictionSummary(doc: ChartDoc | null): PredictionSummary | null {
   };
 }
 
-function summarizeTimeframe(bars: RawBar[], key: TimeframeKey): IntradayTfSummary | null {
+function summarizeTimeframe(
+  bars: RawBar[],
+  key: TimeframeKey,
+  market: Market,
+): IntradayTfSummary | null {
   try {
-    return coerceIntradayTimeframe(bars, key).summary;
+    return coerceIntradayTimeframe(bars, key, undefined, market).summary;
   } catch {
     return null;
   }
@@ -212,9 +216,9 @@ export async function buildCommentPack(
     prediction: predictionSummary(doc),
     recent_comments: comments.slice(-RECENT_COMMENTS),
     day_levels: {
-      prev_day: prevDayLevels(dayBars, now),
-      pre_market: preMarketRange(m5Bars, now),
-      opening_range: openingRange(m5Bars, now),
+      prev_day: prevDayLevels(dayBars, now, marketOf(symbol)),
+      pre_market: preMarketRange(m5Bars, now, marketOf(symbol)),
+      opening_range: openingRange(m5Bars, now, marketOf(symbol)),
     },
     rel_volume: computeRelativeVolume(m15Bars, now),
   };
@@ -294,7 +298,7 @@ export async function buildReassessPack(
     const bars = barsList[i];
     timeframes[tf.key] = {
       bars: bars.slice(-REASSESS_TF_BARS),
-      summary: summarizeTimeframe(bars, tf.key),
+      summary: summarizeTimeframe(bars, tf.key, marketOf(symbol)),
     };
   });
 
@@ -320,11 +324,17 @@ export async function buildReassessPack(
     flow,
     rel_volume: relvolBars.length ? computeRelativeVolume(relvolBars, now) : null,
     day_levels: {
-      prev_day: prevDayLevels(dayBars, now),
-      pre_market: preMarketRange(m5Bars, now),
-      opening_range: openingRange(m5Bars, now),
+      prev_day: prevDayLevels(dayBars, now, marketOf(symbol)),
+      pre_market: preMarketRange(m5Bars, now, marketOf(symbol)),
+      opening_range: openingRange(m5Bars, now, marketOf(symbol)),
     },
-    day_context: buildDayContext(dayBars, m5Bars, now, lastVwap(sessionVwap(m5Bars))),
+    day_context: buildDayContext(
+      dayBars,
+      m5Bars,
+      now,
+      lastVwap(sessionVwap(m5Bars, marketOf(symbol))),
+      marketOf(symbol),
+    ),
     options_levels: optionsLevels,
     event_risk: eventRisk,
     lessons,

@@ -34,6 +34,13 @@ const LIVE_TYPES = new Set(['flow', 'intraday']);
 const TF_TO_CANDLE_PERIOD: Record<TimeframeKey, CandlePeriod> = { m5: '5m', m15: '15m', h1: '60m' };
 const DEBOUNCE_MS = 250;
 const PUSH_FRESH_WINDOW_MS = 3_000;
+// A 股的推送是米筐快照轮询（盘中 3 秒一轮，流量紧张时放慢到 6–15 秒）合成的，
+// 3 秒的窗口会让图表在"推送驱动"和"每 15 秒重拉"之间来回切；放宽到 20 秒。
+const CN_PUSH_FRESH_WINDOW_MS = 20_000;
+
+export function pushFreshWindowMs(market: Market): number {
+  return market === 'CN' ? CN_PUSH_FRESH_WINDOW_MS : PUSH_FRESH_WINDOW_MS;
+}
 
 const chartMarkets = new Map<string, Market>();
 
@@ -64,7 +71,7 @@ function chartIntervalMs(key?: string): number {
   const now = Date.now();
   const lastPushAt = state?.lastPushAt ?? null;
   if (state) {
-    const fresh = isPushFresh(lastPushAt, now, PUSH_FRESH_WINDOW_MS);
+    const fresh = isPushFresh(lastPushAt, now, pushFreshWindowMs(market));
     if (state.pushMode !== fresh) {
       state.pushMode = fresh;
       console.log(
@@ -72,7 +79,7 @@ function chartIntervalMs(key?: string): number {
       );
     }
   }
-  return pollIntervalMs(lastPushAt, now, session, PUSH_FRESH_WINDOW_MS);
+  return pollIntervalMs(lastPushAt, now, session, pushFreshWindowMs(market));
 }
 
 const chartPollers = new Map<string, PollerHandle>();
@@ -207,7 +214,10 @@ async function buildFromState(
             getOptions ? getOptions(symbol).catch(() => null) : Promise.resolve(null),
             null,
           ),
-          enrichWithin(getEventRisk(symbol).catch(() => null), null),
+          enrichWithin(
+            getEventRisk(symbol).catch(() => null),
+            null,
+          ),
         ])
       : [null, null];
   const input: Record<string, unknown> = {
@@ -469,7 +479,6 @@ export async function subscribeChart(
   });
   return handle.subscribe(push);
 }
-
 
 export async function subscribePreview(
   symbol: string,

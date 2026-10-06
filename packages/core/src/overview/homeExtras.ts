@@ -8,9 +8,18 @@ import {
   readAllWatchlists,
 } from '../marketdata/streamRouting.js';
 import type { SecurityProfile } from '../marketdata/types.js';
+import { cnCacheFresh } from '../marketdata/ricequantTime.js';
 import { marketOf } from '../symbols/symbol.utils.js';
 
 const FLOW_TTL_MS = 60_000;
+// A 股收盘后、午休、开盘前资金流不会再变：同一段里半小时才重拉一次（一次全自选约 450 KB）
+const QUIET_FLOW_TTL_MS = 30 * 60_000;
+
+function flowFresh(symbol: string, at: number, now: number): boolean {
+  return marketOf(symbol) === 'CN'
+    ? cnCacheFresh(at, now, FLOW_TTL_MS, QUIET_FLOW_TTL_MS)
+    : now - at < FLOW_TTL_MS;
+}
 const OPTION_SYMBOL_RE = /\d{6}[CP]\d+/;
 
 export function flowEligible(symbol: string): boolean {
@@ -145,7 +154,7 @@ async function getFlows(symbols: string[]): Promise<Record<string, number | null
   const now = Date.now();
   const stale = symbols.filter((s) => {
     const cached = flowCache.get(s);
-    return !cached || now - cached.at >= FLOW_TTL_MS;
+    return !cached || !flowFresh(s, cached.at, now);
   });
   const single: string[] = [];
   for (const [provider, group] of groupByProvider(stale)) {
@@ -254,7 +263,7 @@ function flowsNeedRefresh(symbols: string[]): boolean {
   const now = Date.now();
   return symbols.some((s) => {
     const cached = flowCache.get(s);
-    return !cached || now - cached.at >= FLOW_TTL_MS;
+    return !cached || !flowFresh(s, cached.at, now);
   });
 }
 

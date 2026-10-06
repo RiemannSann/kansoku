@@ -1,5 +1,6 @@
 import type { RawBar } from '@kansoku/shared/types';
 import { preMarketRange, regularRange } from '../../analysis/dayLevels.js';
+import { marketOf } from '../../symbols/symbol.utils.js';
 import { toTs } from '../../analysis/indicators.js';
 import type { ReassessPack } from './datapack.js';
 
@@ -81,8 +82,9 @@ export function verifyDirectionalRead(
   const last = tail ? Number(tail.close) : null;
   const lastBarTime = tail ? new Date(toTs(tail.time) * 1000).toISOString() : null;
 
-  const cash = regularRange(m5, now);
-  const pre = pack.day_levels?.pre_market ?? preMarketRange(m5, now);
+  const market = marketOf(pack.symbol);
+  const cash = regularRange(m5, now, market);
+  const pre = pack.day_levels?.pre_market ?? preMarketRange(m5, now, market);
   const prev = pack.day_levels?.prev_day ?? null;
 
   const notes: string[] = [];
