@@ -3,18 +3,23 @@ import type { Market } from '../symbols/symbol.utils.js';
 import { longbridgeProvider } from './longbridge.js';
 import { getLongbridgeStream, resetLongbridgeStream } from './longbridgeStream.js';
 import type { QuoteStream } from './quoteStream.js';
+import { ricequantProvider } from './ricequant.js';
+import { resetRicequantBridge } from './ricequantBridge.js';
+import { getRicequantStream, resetRicequantStream } from './ricequantStream.js';
 import { resetSharedQuoteSocket } from './sharedSocket.js';
 import type { MarketDataProvider } from './types.js';
 
 const providers: Record<string, MarketDataProvider> = {
   longbridge: longbridgeProvider,
+  ricequant: ricequantProvider,
 };
 
 const streamFactories: Record<string, () => QuoteStream> = {
   longbridge: getLongbridgeStream,
+  ricequant: getRicequantStream,
 };
 
-function resolveProviderName(market: Market): string {
+export function resolveProviderName(market: Market): string {
   return process.env[`MARKET_PROVIDER_${market}`] || process.env.MARKET_PROVIDER || 'longbridge';
 }
 
@@ -49,4 +54,6 @@ export function listProviders(): string[] {
 export function disposeMarketData(): void {
   resetLongbridgeStream();
   resetSharedQuoteSocket();
+  resetRicequantStream();
+  resetRicequantBridge();
 }

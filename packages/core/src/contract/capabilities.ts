@@ -8,6 +8,8 @@ export interface CapabilitiesOut {
   license?: LicenseSnapshot;
   features: Record<FeatureKey, FeatureState>;
   hasEncBundle?: boolean;
+  /** 各市场实际使用的行情源（longbridge / ricequant），前端用来标注数据来源 */
+  marketProviders?: Record<'US' | 'HK' | 'CN', string>;
 }
 
 export interface CapabilitiesApi {

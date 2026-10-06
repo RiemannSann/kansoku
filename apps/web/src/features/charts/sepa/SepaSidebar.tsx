@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Check, TriangleAlert, X } from 'lucide-react';
 import type { SepaBuilt } from '@kansoku/shared/types';
+import { useDataSourceLabel } from '@web/features/edition/dataSource';
 import { fmt, signed } from '@web/lib/format';
 import { colors, fontSizes } from '../../../theme/tokens.stylex';
 import { NewsSection } from '../NewsSection';
@@ -232,6 +233,7 @@ function rrTone(ep: { rr_great: boolean; rr_ok: boolean }): string {
 
 export function SepaSidebar({ built }: { built: SepaBuilt }) {
   const s = built.sidebar;
+  const source = useDataSourceLabel(s.symbol);
   const ep = built.chart.entryPlan;
   const zones = built.chart.supportZones;
   const kv = s.keyValues;
@@ -251,7 +253,7 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
             </span>
           </div>
           <div className={`price-date ${stylex.props(styles.priceDate).className}`}>
-            {s.asOf} · 长桥证券
+            {s.asOf} · {source}
           </div>
         </div>
 
@@ -426,7 +428,8 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
                 {!ep.rr_ok && (
                   <span className={`warn-red ${stylex.props(styles.warnRed).className}`}>
                     {' '}
-                    <TriangleAlert className={stylex.props(styles.icon).className} size={13} /> &lt;2:1 SEPA 不入场
+                    <TriangleAlert className={stylex.props(styles.icon).className} size={13} />{' '}
+                    &lt;2:1 SEPA 不入场
                   </span>
                 )}
               </div>
@@ -475,7 +478,7 @@ export function SepaSidebar({ built }: { built: SepaBuilt }) {
 
         <div className={`disclaimer ${stylex.props(styles.disclaimer).className}`}>
           <TriangleAlert className={stylex.props(styles.icon).className} size={12} />{' '}
-          仅供学习参考，不构成投资建议。数据来源：长桥证券。
+          仅供学习参考，不构成投资建议。数据来源：{source}。
           <br />
           SEPA 框架基于 Mark Minervini 方法。Verdict 自动检测 trend template + extended
           警戒；形态（VCP / 杯柄 / 平台 / 旗形）需人工目视确认。

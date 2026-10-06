@@ -10,6 +10,7 @@ export interface Capabilities {
   license?: LicenseSnapshot;
   features?: Record<FeatureKey, FeatureState>;
   hasEncBundle?: boolean;
+  marketProviders?: Record<'US' | 'HK' | 'CN', string>;
 }
 
 const DEFAULT: Capabilities = { pro: null, licensed: false };

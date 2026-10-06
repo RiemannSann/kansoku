@@ -2,6 +2,7 @@ import { currentSnapshotSafe, isLicensed } from '../license/licenseGate.js';
 import type { CapabilitiesApi } from '../contract/capabilities.js';
 import { featureStates } from '../pro/features.js';
 import { hasEncBundle, isProPresent } from '../pro/bundleState.js';
+import { resolveProviderName } from '../marketdata/registry.js';
 
 export const capabilitiesService: CapabilitiesApi = {
   async get() {
@@ -11,6 +12,11 @@ export const capabilitiesService: CapabilitiesApi = {
       license: currentSnapshotSafe(),
       features: await featureStates(),
       hasEncBundle: hasEncBundle(),
+      marketProviders: {
+        US: resolveProviderName('US'),
+        HK: resolveProviderName('HK'),
+        CN: resolveProviderName('CN'),
+      },
     };
   },
 };

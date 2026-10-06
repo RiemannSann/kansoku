@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { TriangleAlert } from 'lucide-react';
 import type { IntradayBuilt, QuoteCell, TimeframeKey } from '@kansoku/shared/types';
+import { useDataSourceLabel } from '@web/features/edition/dataSource';
 import { useLiveQuote } from '@web/features/quotes/useLiveQuote';
 import { fmt } from '@web/lib/format';
 import { marketOfSymbol } from '@web/lib/market';
@@ -112,6 +113,7 @@ export function IntradaySidebar({
 }: IntradaySidebarProps) {
   const s = built.sidebar;
   const market = marketOfSymbol(s.symbol);
+  const source = useDataSourceLabel(s.symbol);
   const displayedQuote = resolveSidebarQuote(s, useLiveQuote(live ? s.symbol : null));
   const [internalActive, setInternalActive] = useState('prediction');
   const active = activeProp ?? internalActive;
@@ -160,7 +162,7 @@ export function IntradaySidebar({
           </div>
           <div className={`price-date ${stylex.props(styles.priceDate).className}`}>
             {displayedQuote.asOf ? <MarketTime value={displayedQuote.asOf} market={market} /> : ''}{' '}
-            · 长桥证券
+            · {source}
           </div>
         </div>
 
@@ -176,7 +178,7 @@ export function IntradaySidebar({
 
         <div className={`disclaimer ${stylex.props(styles.disclaimer).className}`}>
           <TriangleAlert className={`icon ${stylex.props(styles.icon).className}`} size={12} />{' '}
-          仅供学习参考，不构成投资建议。数据来源：长桥证券。
+          仅供学习参考，不构成投资建议。数据来源：{source}。
           <br />
           方向判断、情景推演和入场计划为 AI 分析结论；Pin Bar、MACD 背离标注及 MACD
           数值由服务端算法自动计算。
