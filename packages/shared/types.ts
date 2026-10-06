@@ -872,6 +872,8 @@ export interface OverviewBoard {
   caps?: Record<string, number>;
   /** Display name and industry per symbol, where the data source knows them. */
   profiles?: Record<string, { name?: string; industry?: string }>;
+  /** StockSeller 实盘里有仓位的代码（只在设了 STOCKSELLER_LIVE_URL 时有） */
+  live_held?: string[];
 }
 
 export interface HomeEventItem {

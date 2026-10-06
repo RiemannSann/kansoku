@@ -1,3 +1,5 @@
+import type { LiveSellerOut } from '@kansoku/core/contract/index';
+
 // 实盘看板的纯展示规则（和 live_view_web.py 的表格口径保持一致）
 
 export const SECTION_ORDER = ['buy', 'intent', 'sold', 'available'] as const;
@@ -44,4 +46,29 @@ export function cellTone(header: string, value: string): 'up' | 'down' | null {
   const number = Number.parseFloat(value.replaceAll(/[\s%,]/g, ''));
   if (!Number.isFinite(number) || number === 0) return null;
   return number > 0 ? 'up' : 'down';
+}
+
+export interface SymbolLiveRow {
+  section: SectionKey;
+  /** 去掉键、代码、名称后的 [表头, 值]；空值（-）不要 */
+  fields: Array<[string, string]>;
+}
+
+const IDENTITY_HEADERS = new Set(['key', 'code', 'name']);
+
+/** 某只票在实盘看板各个表里的那几行（个股页侧栏用） */
+export function rowsForSymbol(out: LiveSellerOut | null, symbol: string): SymbolLiveRow[] {
+  if (!out?.connected) return [];
+  return SECTION_ORDER.flatMap((section) =>
+    out.sections[section].rows
+      .filter((row) => row.symbol === symbol)
+      .map((row) => ({
+        section,
+        fields: row.cells.flatMap((cell, i): Array<[string, string]> => {
+          const header = out.sections[section].headers[i] ?? '';
+          if (IDENTITY_HEADERS.has(header.toLowerCase()) || !cell || cell === '-') return [];
+          return [[header, cell]];
+        }),
+      })),
+  );
 }

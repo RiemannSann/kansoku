@@ -88,9 +88,12 @@ describe('buildPanoramaGroups', () => {
         '600519.SH': { name: '贵州茅台', industry: '食品饮料' },
         '000858.SZ': { name: '五粮液', industry: '食品饮料' },
       },
+      ['000858.SZ'],
     );
     expect(groups.map((g) => g.industry)).toEqual(['食品饮料']);
     expect(groups[0].tiles.map((t) => t.name)).toEqual(['贵州茅台', '五粮液']);
+    // 五粮液在 StockSeller 实盘里有仓位，标成持仓
+    expect(groups[0].tiles.map((t) => t.owned)).toEqual([false, true]);
   });
 });
 

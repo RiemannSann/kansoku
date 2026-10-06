@@ -29,6 +29,7 @@ interface HomeExtras {
   market: MarketTemp | null;
   caps: Record<string, number>;
   profiles: Record<string, SecurityProfile>;
+  live_held?: string[];
 }
 
 let flowCache = new Map<string, { at: number; value: number | null }>();
@@ -285,12 +286,13 @@ function startWarm(symbols: string[]): void {
 }
 
 export async function buildHomeExtras(extraSymbols: string[]): Promise<HomeExtras> {
-  const [watch, market] = await Promise.all([
+  const [watch, market, liveHeld] = await Promise.all([
     getWatchSymbols().catch(() => []),
     getMarketTemp().catch(() => null),
+    readLiveSellerHeld().catch(() => []),
   ]);
-  const symbols = [...new Set([...watch, ...extraSymbols])].filter(flowEligible);
-  const extras = snapshotExtras(symbols, market);
+  const symbols = [...new Set([...watch, ...liveHeld, ...extraSymbols])].filter(flowEligible);
+  const extras = { ...snapshotExtras(symbols, market), live_held: liveHeld };
   startWarm(symbols);
   return extras;
 }

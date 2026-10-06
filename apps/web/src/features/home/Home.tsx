@@ -232,6 +232,7 @@ export function Home() {
         portfolio={portfolio ?? null}
         caps={board?.caps ?? {}}
         profiles={board?.profiles ?? {}}
+        liveHeld={board?.live_held ?? []}
       />
     </>
   );

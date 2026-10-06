@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { TriangleAlert } from 'lucide-react';
 import type { IntradayBuilt, QuoteCell, TimeframeKey } from '@kansoku/shared/types';
 import { useDataSourceLabel } from '@web/features/edition/dataSource';
+import { LiveSellerCard } from '@web/features/liveSeller/LiveSellerCard';
 import { useLiveQuote } from '@web/features/quotes/useLiveQuote';
 import { fmt } from '@web/lib/format';
 import { marketOfSymbol } from '@web/lib/market';
@@ -181,6 +182,8 @@ export function IntradaySidebar({
           />
 
           <EventRiskCard eventRisk={s.eventRisk} />
+
+          {market === 'CN' && <LiveSellerCard symbol={s.symbol} />}
 
           <SidebarTabs active={active} onChange={setActive} tabs={tabs} />
 

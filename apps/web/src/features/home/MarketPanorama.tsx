@@ -61,8 +61,10 @@ export function buildPanoramaGroups(
   portfolio: PortfolioSummary | null,
   caps: Record<string, number> = {},
   profiles: SymbolProfiles = {},
+  liveHeld: readonly string[] = [],
 ): PanoramaGroup[] {
-  const owned = new Set((portfolio?.positions ?? []).map((p) => p.symbol));
+  // 长桥持仓 + StockSeller 实盘仓位都算「持仓」
+  const owned = new Set([...(portfolio?.positions ?? []).map((p) => p.symbol), ...liveHeld]);
   const indexSet = new Set(INDEX_SYMBOLS);
   const byIndustry = new Map<string, PanoramaTile[]>();
   for (const q of quotes) {
@@ -529,13 +531,15 @@ function WatchPanorama({
   portfolio,
   caps,
   profiles,
+  liveHeld,
 }: {
   quotes: QuoteCell[];
   portfolio: PortfolioSummary | null;
   caps: Record<string, number>;
   profiles: SymbolProfiles;
+  liveHeld: readonly string[];
 }) {
-  const groups = buildPanoramaGroups(quotes, portfolio, caps, profiles);
+  const groups = buildPanoramaGroups(quotes, portfolio, caps, profiles, liveHeld);
   if (!groups.length) return <NoteBlock>行情就绪后展示全景图</NoteBlock>;
   const { main, tools } = splitPanorama(groups);
   const line = panoramaReadLine(groups);
@@ -642,11 +646,13 @@ export function MarketPanorama({
   portfolio,
   caps = {},
   profiles = {},
+  liveHeld = [],
 }: {
   quotes: QuoteCell[];
   portfolio: PortfolioSummary | null;
   caps?: Record<string, number>;
   profiles?: SymbolProfiles;
+  liveHeld?: readonly string[];
 }) {
   const [tab, setTab] = useState<'watch' | 'market'>('watch');
   return (
@@ -668,7 +674,13 @@ export function MarketPanorama({
         </button>
       </div>
       {tab === 'watch' ? (
-        <WatchPanorama quotes={quotes} portfolio={portfolio} caps={caps} profiles={profiles} />
+        <WatchPanorama
+          quotes={quotes}
+          portfolio={portfolio}
+          caps={caps}
+          profiles={profiles}
+          liveHeld={liveHeld}
+        />
       ) : (
         <IndustryPanoramaView />
       )}

@@ -191,7 +191,11 @@ export function buildGridEntries({
   const indexSet = new Set(INDEX_SYMBOLS);
   const quoteBySymbol = new Map(quotes.map((q) => [q.symbol, q]));
   const rowBySymbol = new Map((board?.rows ?? []).map((r) => [r.symbol, r]));
-  const owned = new Set((portfolio?.positions ?? []).map((p) => p.symbol));
+  // 长桥持仓 + StockSeller 实盘仓位都算「持仓」
+  const owned = new Set([
+    ...(portfolio?.positions ?? []).map((p) => p.symbol),
+    ...(board?.live_held ?? []),
+  ]);
   const earningsBySymbol = new Map<string, string>();
   if (events) {
     const cutoff = new Date(
