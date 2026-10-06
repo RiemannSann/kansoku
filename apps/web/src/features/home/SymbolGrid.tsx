@@ -8,6 +8,7 @@ import type {
 } from '@kansoku/shared/types';
 import * as stylex from '@stylexjs/stylex';
 import { fmt, signed } from '@web/lib/format';
+import { LIMIT_LABEL, limitState } from '@web/lib/limitState';
 import { Badge, Card, Dot, Empty, MarketTime, Num } from '@web/ui';
 import { directionTone } from '@web/features/charts/intraday/directionLabels';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
@@ -241,6 +242,7 @@ function GridCard({ entry }: { entry: GridEntry }) {
   const last = quote?.last ?? row?.last ?? null;
   const pct = quote?.pct ?? row?.pct ?? null;
   const comment = row?.latest_comment ?? null;
+  const atLimit = limitState(quote);
   return (
     <Card link className="symbol-card" href={`/symbol/${encodeURIComponent(symbol)}`}>
       <div className={`symbol-card-head ${stylex.props(styles.symbolCardHead).className}`}>
@@ -263,6 +265,7 @@ function GridCard({ entry }: { entry: GridEntry }) {
           </span>
         )}
         {quote && quote.session !== '日盘' && <Badge className="qc-session">{quote.session}</Badge>}
+        {atLimit && <Badge tone={atLimit}>{LIMIT_LABEL[atLimit]}</Badge>}
         {owned && (
           <Badge className={`hold-badge ${stylex.props(styles.holdBadge).className}`}>持仓</Badge>
         )}
@@ -283,9 +286,7 @@ function GridCard({ entry }: { entry: GridEntry }) {
         )}
       </div>
       <div className={`symbol-card-levels ${stylex.props(styles.symbolCardLevels).className}`}>
-        <span
-          className={flowStyle ? stylex.props(flowStyle).className : undefined}
-        >
+        <span className={flowStyle ? stylex.props(flowStyle).className : undefined}>
           {fmtFlowLabeled(flow)}
         </span>
         {row && <span>止损 {pctCell(row.stop_distance_pct)}</span>}

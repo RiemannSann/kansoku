@@ -11,6 +11,7 @@ import { coreAiChannels } from './aiChannels.js';
 import { subscribeAnalyses } from './analyses.js';
 import { subscribeBenchmark } from './benchmark.js';
 import { subscribeBoard } from './board.js';
+import { subscribeDepth } from './depth.js';
 import { subscribeChart, subscribePreview } from './charts.js';
 import type { Connection } from './connection.js';
 import { subscribeEvents } from './events.js';
@@ -29,6 +30,7 @@ const STATIC_KINDS = [
   'preview',
   'annotations',
   'events',
+  'depth',
 ] as const;
 
 export interface WsSub {
@@ -86,6 +88,10 @@ export function parseWsMessage(raw: unknown): WsClientMessage | null {
   if (msg.kind === 'preview') {
     if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
     return { op: 'sub', key: msg.key, kind: 'preview', symbol: msg.symbol };
+  }
+  if (msg.kind === 'depth') {
+    if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
+    return { op: 'sub', key: msg.key, kind: 'depth', symbol: msg.symbol };
   }
   if (msg.kind === 'board') {
     return { op: 'sub', key: msg.key, kind: 'board' };
@@ -158,6 +164,7 @@ async function attachChannel(msg: WsSub, push: (envelope: string) => void): Prom
   if (msg.kind === 'annotations') return attachAnnotations(msg.symbol as string, push);
   if (msg.kind === 'events')
     return subscribeEvents(msg.symbol != null ? normalizeSymbol(msg.symbol) : null, push);
+  if (msg.kind === 'depth') return subscribeDepth(normalizeSymbol(msg.symbol as string), push);
   if (msg.kind === 'board') return subscribeBoard(push);
   const channel = findChannel(msg.kind);
   if (channel) return channel.attach(msg as unknown as Record<string, unknown>, push);

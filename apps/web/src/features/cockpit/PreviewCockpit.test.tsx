@@ -62,6 +62,8 @@ vi.mock('@web/features/events/EventCanvasHost', () => ({
 }));
 vi.mock('./sharedSidebarTabs', () => ({
   buildSharedSidebarTabs: () => [],
+  buildDepthTabs: () => [],
+  defaultSidebarTab: () => 'prediction',
 }));
 vi.mock('./GenerateAnalysis', () => ({
   GenerateAnalysis: () => <div data-testid="generate-analysis" />,

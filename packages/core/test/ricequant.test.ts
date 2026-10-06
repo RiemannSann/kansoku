@@ -210,6 +210,85 @@ describe('ricequant stream', () => {
     expect(stream.getSnapshot('600519.SH')?.pct).toBeCloseTo(1, 6);
   });
 
+  it('carries limit prices and the five-level book; book-only changes notify without touching bars', async () => {
+    const book = (bid1Vol: number): BridgeSnapshot => ({
+      ...snap('2026-09-30 10:00:00', 101, 1000),
+      limit_up: 110,
+      limit_down: 90,
+      bids: [101, 100.99, 0, null, 100.9],
+      bid_vols: [bid1Vol, 200, 0, null, 500],
+      asks: [101.01, 101.02, 101.03, 101.04, 101.05],
+      ask_vols: [100, 200, 300, 400, 500],
+    });
+    const { stream } = harness([[book(300)], [book(800)], [book(800)]]);
+    const seen: number[] = [];
+    const bars: CandleBar[] = [];
+    stream.onUpdate((cell) => seen.push(cell.last));
+    stream.subscribeCandlesticks('600519.SH', '5m', (bar) => bars.push(bar), {
+      time: iso('2026-09-30 10:00:00'),
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 900,
+    });
+    await stream.retain(['600519.SH']);
+    const barsAfterFirst = bars.length;
+    await stream.poll();
+    await stream.poll();
+
+    // 第二轮只有买一挂单变了：通知一次（盘口刷新），K 线不动；第三轮完全没变：不通知
+    expect(seen).toEqual([101, 101]);
+    expect(bars).toHaveLength(barsAfterFirst);
+    expect(stream.getSnapshot('600519.SH')).toMatchObject({
+      volume: 1000,
+      limitUp: 110,
+      limitDown: 90,
+    });
+    expect(stream.getDepth('600519.SH')).toMatchObject({
+      symbol: '600519.SH',
+      last: 101,
+      prevClose: 100,
+      limitUp: 110,
+      limitDown: 90,
+      auction: false,
+      bids: [
+        { price: 101, volume: 800 },
+        { price: 100.99, volume: 200 },
+        { price: 100.9, volume: 500 },
+      ],
+    });
+    expect(stream.getDepth('600519.SH')?.asks).toHaveLength(5);
+    expect(stream.getDepth('000001.SZ')).toBeUndefined();
+  });
+
+  it('index snapshots (limit 0) carry no limit prices; auction depth shows the indicative price', async () => {
+    const index: BridgeSnapshot = {
+      ...snap('2026-09-30 09:20:00', 3300, 0),
+      symbol: '000001.XSHG',
+      limit_up: 0,
+      limit_down: 0,
+    };
+    const auction: BridgeSnapshot = {
+      ...snap('2026-09-30 09:20:00', 100, 0),
+      bids: [102, 0, 0, 0, 0],
+      bid_vols: [5000, 0, 0, 0, 0],
+      asks: [102, 0, 0, 0, 0],
+      ask_vols: [5000, 0, 0, 0, 0],
+    };
+    const { stream } = harness([[index, auction]]);
+    await stream.retain(['000001.XSHG', '600519.SH']);
+    const cell = stream.getSnapshot('000001.XSHG');
+    expect(cell?.limitUp).toBeUndefined();
+    expect(cell?.limitDown).toBeUndefined();
+    expect(stream.getDepth('600519.SH')).toMatchObject({
+      last: 102,
+      auction: true,
+      bids: [{ price: 102, volume: 5000 }],
+      asks: [{ price: 102, volume: 5000 }],
+    });
+  });
+
   it('extends the seeded bar, then opens a new one at the next session bucket', async () => {
     const { stream } = harness([
       [snap('2026-09-30 11:26:00', 101, 1000)],

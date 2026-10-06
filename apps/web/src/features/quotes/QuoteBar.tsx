@@ -5,6 +5,7 @@ import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
 import { Badge, MarketTime } from '../../ui';
 import { useLiveQuote } from './useLiveQuote';
 import { pricePrefix } from '@web/lib/currency';
+import { LIMIT_LABEL, limitState } from '@web/lib/limitState';
 
 const styles = stylex.create({
   root: {
@@ -48,6 +49,7 @@ export function TopbarQuote({ sym }: { sym: string }) {
   if (!quote) return null;
 
   const tone = pctTone(quote.pct);
+  const atLimit = limitState(quote);
   const numberClassName = stylex.props(
     styles.number,
     tone === 'up' ? styles.up : tone === 'down' ? styles.down : undefined,
@@ -63,6 +65,7 @@ export function TopbarQuote({ sym }: { sym: string }) {
         {pctText(quote.pct)}
       </span>
       <Badge className="qc-session">{quote.session}</Badge>
+      {atLimit && <Badge tone={atLimit}>{LIMIT_LABEL[atLimit]}</Badge>}
       <MarketTime
         className={stylex.props(styles.time).className}
         value={quote.asOf || 0}

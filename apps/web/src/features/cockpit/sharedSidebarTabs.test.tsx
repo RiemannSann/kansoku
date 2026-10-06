@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { IntradaySidebar } from '@kansoku/shared/types';
 
 vi.mock('./AiTab', () => ({ AiTab: () => <div>ai-tab</div> }));
+vi.mock('./DepthTab', () => ({ DepthTab: () => <div>depth-tab</div> }));
 vi.mock('./EnvTab', () => ({ EnvTab: () => <div>env-tab</div> }));
 vi.mock('./FlowTab', () => ({ FlowTab: () => <div>flow-tab</div> }));
 vi.mock('./ReviewTab', () => ({ ReviewTab: () => <div>review-tab</div> }));
@@ -14,7 +15,8 @@ vi.mock('../events/SymbolEventsTab', () => ({
   SymbolEventsTab: ({ symbol }: { symbol: string }) => <div>symbol-events:{symbol}</div>,
 }));
 
-const { buildSharedSidebarTabs } = await import('./sharedSidebarTabs');
+const { buildDepthTabs, buildSharedSidebarTabs, defaultSidebarTab } =
+  await import('./sharedSidebarTabs');
 
 function tabs(sym = 'MU.US') {
   return buildSharedSidebarTabs({
@@ -56,5 +58,16 @@ describe('buildSharedSidebarTabs', () => {
     expect(eventsTab?.label).toBe('事件');
     render(<div>{eventsTab?.content}</div>);
     expect(screen.getByText('symbol-events:MU.US')).toBeTruthy();
+  });
+
+  it('adds a 盘口 tab and opens it by default only for A-share symbols', () => {
+    expect(buildDepthTabs('600519.SH').map((tab) => [tab.key, tab.label])).toEqual([
+      ['depth', '盘口'],
+    ]);
+    expect(buildDepthTabs('000001.SZ')).toHaveLength(1);
+    expect(buildDepthTabs('MU.US')).toEqual([]);
+    expect(buildDepthTabs('700.HK')).toEqual([]);
+    expect(defaultSidebarTab('600519.SH')).toBe('depth');
+    expect(defaultSidebarTab('MU.US')).toBe('prediction');
   });
 });

@@ -712,6 +712,38 @@ export interface QuoteCell {
   regularPct: number | null;
   turnover?: number;
   asOf?: string;
+  /** 当日累计成交量（股）；只有米筐 A 股报价带 */
+  volume?: number;
+  /** 涨停价 / 跌停价；只有 A 股个股带（指数、没有涨跌停的品种不带） */
+  limitUp?: number;
+  limitDown?: number;
+}
+
+export interface DepthLevel {
+  price: number;
+  /** 股（同花顺显示的"手" = 股 ÷ 100） */
+  volume: number;
+}
+
+/** 个股盘口：五档买卖 + 当日开高低、涨跌停（A 股，来自米筐 3 秒快照） */
+export interface QuoteDepth {
+  symbol: string;
+  asOf: string;
+  last: number;
+  prevClose: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number;
+  turnover: number;
+  limitUp: number | null;
+  limitDown: number | null;
+  /** 买一到买五，价格为 0 的空档已去掉 */
+  bids: DepthLevel[];
+  /** 卖一到卖五 */
+  asks: DepthLevel[];
+  /** 开盘集合竞价阶段：买一 = 卖一 = 虚拟撮合价 */
+  auction: boolean;
 }
 
 export interface QuoteSnapshot {

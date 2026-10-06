@@ -27,7 +27,11 @@ import { ReanalyzeStrip } from './ReanalyzeStrip';
 import { conclusionOutdated } from '../charts/intraday/ConclusionCard';
 import { PredictionTab } from '../charts/intraday/tabs/PredictionTab';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
-import { buildSharedSidebarTabs } from './sharedSidebarTabs';
+import {
+  buildDepthTabs,
+  buildSharedSidebarTabs,
+  defaultSidebarTab,
+} from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
 import { useCockpitComments } from './useCockpitComments';
 import { useCockpitEnv } from './useCockpitEnv';
@@ -227,7 +231,7 @@ export function SymbolCockpit({ sym }: { sym: string }) {
     setSelectedJournal,
   } = useCockpitReviewState(sym);
 
-  const [activeTab, setActiveTab] = useState('prediction');
+  const [activeTab, setActiveTab] = useState(() => defaultSidebarTab(sym));
   const { comments, error: commentsError, loaded: commentsLoaded } = useCockpitComments(sym);
   const { unread, latestAlert } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
 
@@ -326,6 +330,7 @@ export function SymbolCockpit({ sym }: { sym: string }) {
   const analysesRows = analyses;
 
   const sidebarTabs: SidebarTab[] = [
+    ...buildDepthTabs(sym),
     {
       key: 'prediction',
       label: '预测',

@@ -30,7 +30,11 @@ import { CockpitSkeleton } from './CockpitSkeleton';
 import { GenerateAnalysis } from './GenerateAnalysis';
 import { GenerateAnalysisCta } from './GenerateAnalysisCta';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
-import { buildSharedSidebarTabs } from './sharedSidebarTabs';
+import {
+  buildDepthTabs,
+  buildSharedSidebarTabs,
+  defaultSidebarTab,
+} from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
 import { useCockpitComments } from './useCockpitComments';
 import { useCockpitEnv } from './useCockpitEnv';
@@ -152,7 +156,7 @@ export function PreviewCockpit({
     selectedJournal,
     setSelectedJournal,
   } = useCockpitReviewState(sym);
-  const [activeTab, setActiveTab] = useState('prediction');
+  const [activeTab, setActiveTab] = useState(() => defaultSidebarTab(sym));
   const { comments, error: commentsError, loaded: commentsLoaded } = useCockpitComments(sym);
   const { unread } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
   const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', { live: true });
@@ -192,6 +196,7 @@ export function PreviewCockpit({
   const sidebarTf = isViewPeriod(activeIntradayTf) ? built.defaultTf : activeIntradayTf;
 
   const sidebarTabs: SidebarTab[] = [
+    ...buildDepthTabs(sym),
     {
       key: 'prediction',
       label: '预测',

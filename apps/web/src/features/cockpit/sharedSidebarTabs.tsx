@@ -3,8 +3,10 @@ import type { CockpitComment, IntradaySidebar, SymbolAnalysisRow } from '@kansok
 import type { SidebarTab } from '@web/features/charts/SidebarTabs';
 import { NewsTab } from '@web/features/charts/intraday/tabs/NewsTab';
 import { SymbolEventsTab } from '@web/features/events/SymbolEventsTab';
+import { marketOfSymbol } from '@web/lib/market';
 import { Badge } from '@web/ui';
 import { AiTab } from './AiTab';
+import { DepthTab } from './DepthTab';
 import type { CockpitEnvState } from './useCockpitEnv';
 import { EnvTab } from './EnvTab';
 import { FlowTab } from './FlowTab';
@@ -15,6 +17,17 @@ const styles = stylex.create({
     marginLeft: '4px',
   },
 });
+
+/** A 股个股页最前面的「盘口」tab；别的市场没有盘口数据，返回空 */
+export function buildDepthTabs(sym: string): SidebarTab[] {
+  if (marketOfSymbol(sym) !== 'CN') return [];
+  return [{ key: 'depth', label: '盘口', content: <DepthTab symbol={sym} /> }];
+}
+
+/** A 股默认先看盘口，其余市场默认看预测 */
+export function defaultSidebarTab(sym: string): string {
+  return marketOfSymbol(sym) === 'CN' ? 'depth' : 'prediction';
+}
 
 export function buildSharedSidebarTabs(params: {
   sym: string;
@@ -104,10 +117,7 @@ export function buildSharedSidebarTabs(params: {
         <>
           AI 点评
           {unread > 0 && (
-            <Badge
-              tone="down"
-              className={stylex.props(styles.unreadBadge).className}
-            >
+            <Badge tone="down" className={stylex.props(styles.unreadBadge).className}>
               {unread}
             </Badge>
           )}

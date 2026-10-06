@@ -1,4 +1,4 @@
-import type { QuoteCell, RawBar } from '@kansoku/shared/types';
+import type { DepthLevel, QuoteCell, QuoteDepth, RawBar } from '@kansoku/shared/types';
 import { classifySession, sessionLabel } from './session.js';
 import type { CandleBar, CandlePeriod } from './candleAggregator.js';
 import type { CandleListener, QuoteListener, QuoteStream } from './quoteStream.js';
@@ -84,6 +84,8 @@ export class RicequantStream implements QuoteStream {
   private quoteRefs = new Map<string, number>();
   private candles = new Map<string, CandleState>();
   private snapshots = new Map<string, QuoteCell>();
+  private rows = new Map<string, BridgeSnapshot>();
+  private lastBook = new Map<string, string>();
   private lastSeen = new Map<string, string>();
   private volumeMarks = new Map<string, VolumeMark>();
   private listeners = new Set<QuoteListener>();
@@ -215,13 +217,23 @@ export class RicequantStream implements QuoteStream {
       regularLast: shown,
       regularPct: pct,
       ...(snap.turnover > 0 ? { turnover: snap.turnover } : {}),
+      ...(snap.volume > 0 ? { volume: snap.volume } : {}),
+      // 指数的涨跌停价米筐给 0，不算
+      ...(snap.limit_up != null && snap.limit_up > 0 ? { limitUp: snap.limit_up } : {}),
+      ...(snap.limit_down != null && snap.limit_down > 0 ? { limitDown: snap.limit_down } : {}),
       asOf: new Date(ts).toISOString(),
     };
     this.snapshots.set(snap.symbol, cell);
+    this.rows.set(snap.symbol, snap);
+
+    // 价没变、只有挂单变了也要通知（盘口要跟着刷新），但不动 K 线
+    const book = `${snap.bids?.join()}|${snap.bid_vols?.join()}|${snap.asks?.join()}|${snap.ask_vols?.join()}`;
+    const bookChanged = this.lastBook.get(snap.symbol) !== book;
+    this.lastBook.set(snap.symbol, book);
 
     const delta = this.volumeDelta(snap, ts);
+    if (changed || bookChanged) for (const listener of this.listeners) listener(cell);
     if (!changed) return;
-    for (const listener of this.listeners) listener(cell);
     // 当天还没成交（竞价阶段、停牌）就没有 K 线；收盘后、午休里的快照也不再动 K 线
     if (!(snap.volume > 0) || !cnSnapshotFeedsBars(ts)) return;
     for (const state of this.candles.values()) {
@@ -368,6 +380,8 @@ export class RicequantStream implements QuoteStream {
 
   private forget(symbol: string): void {
     this.snapshots.delete(symbol);
+    this.rows.delete(symbol);
+    this.lastBook.delete(symbol);
     this.lastSeen.delete(symbol);
     this.volumeMarks.delete(symbol);
   }
@@ -379,6 +393,37 @@ export class RicequantStream implements QuoteStream {
 
   getSnapshot(symbol: string): QuoteCell | undefined {
     return this.snapshots.get(symbol);
+  }
+
+  /** 五档盘口 + 涨跌停：直接取最近一次快照，不额外请求 */
+  getDepth(symbol: string): QuoteDepth | undefined {
+    const snap = this.rows.get(symbol);
+    const cell = this.snapshots.get(symbol);
+    if (!snap || !cell) return undefined;
+    const ts = parseShanghai(snap.datetime);
+    const levels = (prices?: Array<number | null>, vols?: Array<number | null>): DepthLevel[] =>
+      (prices ?? []).flatMap((price, i) =>
+        price != null && price > 0 ? [{ price, volume: vols?.[i] ?? 0 }] : [],
+      );
+    const positive = (value: number | null | undefined) =>
+      value != null && value > 0 ? value : null;
+    return {
+      symbol,
+      asOf: cell.asOf ?? new Date(ts).toISOString(),
+      // 竞价阶段显示虚拟撮合价，和报价卡片一致
+      last: cell.last ?? snap.last ?? 0,
+      prevClose: positive(snap.prev_close),
+      open: positive(snap.open),
+      high: positive(snap.high),
+      low: positive(snap.low),
+      volume: snap.volume,
+      turnover: snap.turnover,
+      limitUp: positive(snap.limit_up),
+      limitDown: positive(snap.limit_down),
+      bids: levels(snap.bids, snap.bid_vols),
+      asks: levels(snap.asks, snap.ask_vols),
+      auction: isCnOpenAuction(ts),
+    };
   }
 
   dispose(): void {
