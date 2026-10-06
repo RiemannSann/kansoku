@@ -4,6 +4,9 @@
 //
 // 默认取 ~/.config/kansoku/cn-watchlist.txt 里的全部自选，外加 600519.SH 的 5 分钟 K 线订阅。
 // 输出：交易日历、流量档位和已用量、轮询间隔、报价条数和几只样本、K 线推送。只读，不写任何文件。
+import { homedir } from 'node:os';
+import path from 'node:path';
+import { PROJECT_ROOT } from '../src/platform/env.js';
 import { getRicequantGuard } from '../src/marketdata/ricequantGuard.js';
 import { getRicequantStream, resetRicequantStream } from '../src/marketdata/ricequantStream.js';
 import { resetRicequantBridge } from '../src/marketdata/ricequantBridge.js';
@@ -14,6 +17,18 @@ const explicit = process.argv.slice(3);
 
 const fmt = (ms: number) =>
   new Date(ms).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+
+// 和 App 一样读仓库 .env 与 ~/.config/kansoku/kansoku.env（已有的环境变量优先）
+for (const file of [
+  path.join(PROJECT_ROOT, '.env'),
+  process.env.KANSOKU_ENV_FILE || path.join(homedir(), '.config', 'kansoku', 'kansoku.env'),
+]) {
+  try {
+    process.loadEnvFile(file);
+  } catch {
+    // 文件不存在就跳过
+  }
+}
 
 async function main(): Promise<void> {
   const symbols = explicit.length ? explicit : await readCnWatchlist();
