@@ -58,7 +58,8 @@ function formatterFor(
   includeZoneName: boolean,
   includeSeconds = false,
 ): Intl.DateTimeFormat {
-  if (timeZone === MARKET_TIME_ZONE && !includeZoneName && !includeSeconds) return dateTimeFormatter;
+  if (timeZone === MARKET_TIME_ZONE && !includeZoneName && !includeSeconds)
+    return dateTimeFormatter;
 
   const key = `${timeZone}:${includeZoneName ? 'zone' : 'plain'}:${includeSeconds ? 's' : 'm'}`;
   const cached = zonedFormatterCache.get(key);
@@ -202,12 +203,29 @@ export function formatMarketClock(
   return `${clock}${includeZone ? ` ${MARKET_ZONE_SUFFIX[market]}` : ''}`;
 }
 
-export function formatMarketTick(input: TimeInput, tickMarkType: number): string {
-  if (tickMarkType === 0) return parts(input).year;
-  if (tickMarkType === 1) return monthFormatter.format(toDate(input));
+const monthFormatters = new Map<string, Intl.DateTimeFormat>([[MARKET_TIME_ZONE, monthFormatter]]);
+
+function monthFormatterFor(timeZone: string): Intl.DateTimeFormat {
+  let formatter = monthFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', { timeZone, month: 'short' });
+    monthFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+/** Axis tick label in the symbol's own market time (A 股按北京时间，不按美东). */
+export function formatMarketTick(
+  input: TimeInput,
+  tickMarkType: number,
+  market: Market = 'US',
+): string {
+  const zone = marketTimeZone(market);
+  if (tickMarkType === 0) return parts(input, zone).year;
+  if (tickMarkType === 1) return monthFormatterFor(zone).format(toDate(input));
   if (tickMarkType === 2) {
-    const p = parts(input);
+    const p = parts(input, zone);
     return `${p.month}-${p.day}`;
   }
-  return formatMarketClock(input);
+  return formatMarketClock(input, false, market);
 }

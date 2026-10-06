@@ -17,7 +17,7 @@ import {
   type UTCTimestamp,
   type WhitespaceData,
 } from 'lightweight-charts';
-import { formatMarketDateTime, formatMarketTick } from '@kansoku/shared/time';
+import { formatMarketDateTime, formatMarketTick, type Market } from '@kansoku/shared/time';
 import type { Candle, ColoredPoint, LinePoint, SeriesMarker } from '@kansoku/shared/types';
 import { theme } from '../../lib/theme';
 import { colors, fontSizes, radii } from '../../theme/tokens.stylex';
@@ -140,11 +140,23 @@ export function markerTooltip(chart: IChartApi, host: HTMLElement): MarkerToolti
   };
 }
 
-const marketTimeFormatter = (time: Time): string =>
-  typeof time === 'number' ? formatMarketDateTime(time) : String(time);
+const marketTimeFormatter =
+  (market: Market) =>
+  (time: Time): string =>
+    typeof time === 'number' ? formatMarketDateTime(time, true, market) : String(time);
 
-const marketTickMarkFormatter = (time: Time, tickMarkType: TickMarkType): string | null =>
-  typeof time === 'number' ? formatMarketTick(time, tickMarkType) : null;
+const marketTickMarkFormatter =
+  (market: Market) =>
+  (time: Time, tickMarkType: TickMarkType): string | null =>
+    typeof time === 'number' ? formatMarketTick(time, tickMarkType, market) : null;
+
+/** 图表横轴和十字线时间按这只票所在市场的时区显示 */
+export function applyMarketTime(chart: IChartApi, market: Market): void {
+  chart.applyOptions({
+    localization: { timeFormatter: marketTimeFormatter(market) },
+    timeScale: { tickMarkFormatter: marketTickMarkFormatter(market) },
+  });
+}
 
 export function baseChart(el: HTMLElement, timeVisible: boolean, marketTime = false): IChartApi {
   return createChart(el, {
@@ -161,14 +173,14 @@ export function baseChart(el: HTMLElement, timeVisible: boolean, marketTime = fa
     rightPriceScale: { borderColor: theme.border, minimumWidth: 64 },
     localization: marketTime
       ? {
-          timeFormatter: marketTimeFormatter,
+          timeFormatter: marketTimeFormatter('US'),
         }
       : undefined,
     timeScale: {
       borderColor: theme.border,
       timeVisible,
       secondsVisible: false,
-      tickMarkFormatter: marketTime ? marketTickMarkFormatter : undefined,
+      tickMarkFormatter: marketTime ? marketTickMarkFormatter('US') : undefined,
     },
   });
 }

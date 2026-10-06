@@ -12,6 +12,7 @@ import type { LayerGroup } from '../LayerPanel';
 import {
   asTime,
   attachMarkers,
+  applyMarketTime,
   baseChart,
   makeTogglableLine,
   observeSize,
@@ -27,6 +28,7 @@ import {
 import { applyColorConvention, swapUpDown } from '@web/lib/colorConvention';
 import { seriesPalette, theme } from '@web/lib/theme';
 import { localizePriceText, pricePrefix } from '@web/lib/currency';
+import { marketOfSymbol } from '@web/lib/market';
 
 const VP_WIDTH = 90;
 
@@ -43,6 +45,8 @@ export function useSepaCharts(
     [rawChart, symbol],
   );
   const prefix = pricePrefix(symbol);
+  // A 股日线记在北京时间 0 点，横轴要按北京时间显示，不然日期会差一天
+  const market = marketOfSymbol(symbol);
   const [groups, setGroups] = useState<LayerGroup[]>([]);
 
   useEffect(() => {
@@ -53,6 +57,7 @@ export function useSepaCharts(
     if (!mainEl || !rsEl || !vrEl || !vpCanvas) return;
 
     const main = baseChart(mainEl, false);
+    if (market !== 'US') applyMarketTime(main, market);
     const candle = main.addSeries(CandlestickSeries, {
       upColor: theme.up,
       downColor: theme.down,
@@ -257,6 +262,7 @@ export function useSepaCharts(
 
     const timeline = chart.candles.map((c) => c.time);
     const rsChart = baseChart(rsEl, false);
+    if (market !== 'US') applyMarketTime(rsChart, market);
     const rsOpts = { lineWidth: 2 as const, priceLineVisible: false, lastValueVisible: true };
     const rs21 = rsChart.addSeries(LineSeries, { color: seriesPalette[2], ...rsOpts });
     const rs63 = rsChart.addSeries(LineSeries, { color: seriesPalette[4], ...rsOpts });
@@ -276,6 +282,7 @@ export function useSepaCharts(
     }
 
     const vrChart = baseChart(vrEl, false);
+    if (market !== 'US') applyMarketTime(vrChart, market);
     const vr = vrChart.addSeries(HistogramSeries, { priceLineVisible: false });
     vr.setData(padHistData(chart.volRatio, timeline));
     vr.createPriceLine({
@@ -424,7 +431,7 @@ export function useSepaCharts(
       vrChart.remove();
       setGroups([]);
     };
-  }, [chart, mainRef, rsRef, vrRef, vpCanvasRef]);
+  }, [chart, market, mainRef, rsRef, vrRef, vpCanvasRef]);
 
   return groups;
 }

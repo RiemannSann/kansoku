@@ -20,6 +20,7 @@ import type {
 import {
   addPriceLine,
   attachMarkers,
+  applyMarketTime,
   baseChart,
   centerLastBar,
   markerTooltip,
@@ -46,6 +47,7 @@ import { filterVisibleOverlayItems, selectVisibleMarkers } from './markerSelecti
 import { applyColorConvention } from '@web/lib/colorConvention';
 import { seriesPalette, theme } from '@web/lib/theme';
 import { localizePriceText, pricePrefix } from '@web/lib/currency';
+import { marketOfSymbol } from '@web/lib/market';
 
 const EMA_COLORS = [
   theme.accent,
@@ -322,6 +324,14 @@ export function useIntradayCharts(
       handleRef.current = null;
     };
   }, [mainRef, macdRef]);
+
+  const market = marketOfSymbol(built.sidebar.symbol);
+  useEffect(() => {
+    const h = handleRef.current;
+    if (!h) return;
+    applyMarketTime(h.main, market);
+    applyMarketTime(h.macd, market);
+  }, [market, mainRef, macdRef]);
 
   useEffect(() => {
     const h = handleRef.current;
