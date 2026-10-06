@@ -3,6 +3,7 @@ import { ClientError } from '../platform/errors.js';
 import type { FlowRow } from '../analysis/simple.js';
 import { readCnWatchlist } from './cnWatchlist.js';
 import { getRicequantBridge, RicequantBridgeError, type RicequantCall } from './ricequantBridge.js';
+import { getRicequantGuard, type RicequantGuard } from './ricequantGuard.js';
 import { parseShanghai, rqBarTime } from './ricequantTime.js';
 import type { MarketDataProvider, RawQuote, SecurityProfile } from './types.js';
 
@@ -98,10 +99,13 @@ export function toRawQuote(snap: BridgeSnapshot): RawQuote | null {
 
 export function createRicequantProvider(
   call: RicequantCall = (method, params) => getRicequantBridge().call(method, params),
+  guard: Pick<RicequantGuard, 'blockReason' | 'klineCount'> | null = null,
 ): MarketDataProvider {
   const nameCache = new Map<string, Promise<string | null>>();
 
   async function request<T>(label: string, method: string, params: Record<string, unknown>) {
+    const blocked = guard?.blockReason(method);
+    if (blocked) throw new ClientError(`ricequant ${label} skipped: ${blocked}`, blocked, 503);
     try {
       return await call<T>(method, params);
     } catch (error) {
@@ -138,7 +142,7 @@ export function createRicequantProvider(
       const rows = await request<BridgeBar[]>('kline', 'kline', {
         symbol,
         period: normalized,
-        count,
+        count: guard ? guard.klineCount(count) : count,
       });
       return toRawBars(rows, normalized);
     },
@@ -209,4 +213,7 @@ export function createRicequantProvider(
   };
 }
 
-export const ricequantProvider: MarketDataProvider = createRicequantProvider();
+export const ricequantProvider: MarketDataProvider = createRicequantProvider(
+  undefined,
+  getRicequantGuard(),
+);

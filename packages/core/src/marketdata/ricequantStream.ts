@@ -5,6 +5,8 @@ import type { CandleListener, QuoteListener, QuoteStream } from './quoteStream.j
 import { getProvider } from './registry.js';
 import type { BridgeSnapshot } from './ricequant.js';
 import { getRicequantBridge } from './ricequantBridge.js';
+import { getRicequantGuard, type RicequantGuard } from './ricequantGuard.js';
+import { snapshotRecorderFromEnv } from './ricequantRecorder.js';
 import {
   cnBucketStart,
   cnSnapshotFeedsBars,
@@ -14,9 +16,10 @@ import {
   sameShanghaiDay,
 } from './ricequantTime.js';
 
-// 米筐没有推送，靠轮询 current_snapshot 模拟实时：盘中 3 秒一轮，盘外 60 秒一轮，
-// 所有关注的代码合成一次批量请求。K 线用快照里的累计成交量做差分，按 A 股时段分桶拼 bar；
-// 拼出来的量只是近似，图表每分钟重拉一次 K 线会把它校正回交易所口径。
+// 米筐没有推送，靠轮询 current_snapshot 模拟实时：节奏由 RicequantGuard 定（交易日盘中 3 秒一轮，
+// 流量用多了自动放慢；午休 60 秒、收盘后和节假日 5 分钟），所有关注的代码合成一次批量请求。
+// K 线用快照里的累计成交量做差分，按 A 股时段分桶拼 bar；
+// 拼出来的量只是近似，图表定期重拉 K 线会把它校正回交易所口径。
 
 const ACTIVE_POLL_MS = 3_000;
 const IDLE_POLL_MS = 60_000;
@@ -26,12 +29,18 @@ const PERIOD_MINUTES: Record<CandlePeriod, number> = { '5m': 5, '15m': 15, '60m'
 type SnapshotFetcher = (symbols: string[]) => Promise<BridgeSnapshot[]>;
 type SeedFetcher = (symbol: string, period: CandlePeriod) => Promise<RawBar | undefined>;
 
+/** 轮询节奏和单次快照只数上限（默认来自流量保护；测试里可以换成固定值） */
+export type PollPolicy = Pick<RicequantGuard, 'pollIntervalMs' | 'snapshotCap'>;
+
 export interface RicequantStreamDeps {
   fetchSnapshots?: SnapshotFetcher;
   fetchSeed?: SeedFetcher;
   now?: () => number;
   schedule?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>;
   cancel?: (handle: ReturnType<typeof setTimeout>) => void;
+  policy?: PollPolicy;
+  /** 每轮拿到的原始快照交给它（现场核对时录盘用，见 KANSOKU_RQ_RECORD_SYMBOLS） */
+  record?: (rows: BridgeSnapshot[], polledAt: number) => void;
 }
 
 interface CandleState {
@@ -80,11 +89,15 @@ export class RicequantStream implements QuoteStream {
   private listeners = new Set<QuoteListener>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private polling: Promise<void> | null = null;
+  private readonly policy: PollPolicy;
+  private readonly record: RicequantStreamDeps['record'];
+  private rotation = 0;
 
   constructor(deps: RicequantStreamDeps = {}) {
     this.fetchSnapshots =
       deps.fetchSnapshots ??
       ((symbols) => getRicequantBridge().call<BridgeSnapshot[]>('snapshot', { symbols }));
+    this.record = deps.record ?? (deps.fetchSnapshots ? undefined : snapshotRecorderFromEnv());
     this.fetchSeed =
       deps.fetchSeed ??
       (async (symbol, period) => {
@@ -94,21 +107,52 @@ export class RicequantStream implements QuoteStream {
     this.now = deps.now ?? Date.now;
     this.schedule = deps.schedule ?? ((fn, ms) => setTimeout(fn, ms));
     this.cancel = deps.cancel ?? ((handle) => clearTimeout(handle));
+    this.policy =
+      deps.policy ??
+      (deps.fetchSnapshots
+        ? {
+            pollIntervalMs: () => (isCnActiveWindow(this.now()) ? ACTIVE_POLL_MS : IDLE_POLL_MS),
+            snapshotCap: () => Number.POSITIVE_INFINITY,
+          }
+        : getRicequantGuard());
   }
 
   private watched(): string[] {
-    const set = new Set(this.quoteRefs.keys());
+    const set = new Set<string>();
     for (const state of this.candles.values()) set.add(state.symbol);
+    for (const symbol of this.quoteRefs.keys()) set.add(symbol);
     return [...set];
+  }
+
+  /**
+   * 这一轮要问的代码：开着图表的票每轮都带；其余的超过上限时分批轮流带，
+   * 自选再多，单次请求的大小（也就是流量）也有封顶。
+   */
+  private pollBatch(): string[] {
+    const all = this.watched();
+    const cap = this.policy.snapshotCap();
+    if (all.length <= cap) return all;
+    const charted = new Set<string>();
+    for (const state of this.candles.values()) charted.add(state.symbol);
+    const pinned = all.filter((s) => charted.has(s)).slice(0, cap);
+    const rest = all.filter((s) => !charted.has(s));
+    const room = Math.max(0, cap - pinned.length);
+    if (!room || !rest.length) return pinned;
+    const start = this.rotation % rest.length;
+    this.rotation = start + room;
+    const window = rest.slice(start, start + room);
+    if (window.length < room) window.push(...rest.slice(0, room - window.length));
+    return [...pinned, ...window];
   }
 
   /** 立刻拉一轮快照；测试和首次 retain 用。 */
   poll(): Promise<void> {
     if (this.polling) return this.polling;
-    const symbols = this.watched();
+    const symbols = this.pollBatch();
     if (!symbols.length) return Promise.resolve();
     this.polling = this.fetchSnapshots(symbols)
       .then((rows) => {
+        this.record?.(rows, this.now());
         for (const row of rows) this.ingest(row);
       })
       .catch((error: unknown) => {
@@ -137,7 +181,7 @@ export class RicequantStream implements QuoteStream {
   }
 
   private interval(): number {
-    return isCnActiveWindow(this.now()) ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+    return this.policy.pollIntervalMs();
   }
 
   private stopLoopIfIdle(): void {

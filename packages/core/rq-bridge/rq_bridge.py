@@ -181,6 +181,17 @@ def m_ping(_params):
     }
 
 
+def m_calendar(_params):
+    """今天（北京时间）是不是交易日；TS 那边用它决定节假日不按盘中节奏轮询。"""
+    today = today_cn()
+    return {
+        "today": today.isoformat(),
+        "is_trading_day": bool(rq.is_trading_date(today)),
+        "previous": rq.get_previous_trading_date(today).isoformat(),
+        "next": rq.get_next_trading_date(today).isoformat(),
+    }
+
+
 def m_kline(params):
     period = str(params["period"])
     frequency = PERIODS.get(period)
@@ -331,6 +342,7 @@ def m_market_caps(params):
 
 METHODS = {
     "ping": m_ping,
+    "calendar": m_calendar,
     "kline": m_kline,
     "snapshot": m_snapshot,
     "names": m_names,

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import { cnBucketStart, parseShanghai, rqBarTime } from '../src/marketdata/riceq
 
 // 用 2026-09-30 一整天的真实 3 秒快照（米筐 get_ticks）回放 RicequantStream，
 // 拿同一天米筐官方 1 分钟线当标准答案。生成脚本：packages/core/rq-bridge/build_replay_fixture.py
+// 设 RQ_REPLAY_FIXTURE=<路径> 可以换成别的 fixture（比如 10-08 App 现场录下的快照），同一套断言再跑一遍。
 
 type TickRow = [string, number, number, number, number, number, number, number, number];
 type BarRow = [string, number, number, number, number, number, number];
@@ -35,7 +36,12 @@ interface Fixture {
 const FIXTURE: Fixture = JSON.parse(
   gunzipSync(
     readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'rq-replay-2026-09-30.json.gz'),
+      process.env.RQ_REPLAY_FIXTURE ||
+        path.join(
+          path.dirname(fileURLToPath(import.meta.url)),
+          'fixtures',
+          'rq-replay-2026-09-30.json.gz',
+        ),
     ),
   ).toString('utf8'),
 );
@@ -200,9 +206,13 @@ describe('ricequant replay 2026-09-30: open auction 09:15–09:25', () => {
   );
 
   it('shows the indicative auction price (bid1 = ask1) in the quote, flagged as 集合竞价', async () => {
-    const symbol = '600519.SH';
+    const symbol = SYMBOLS[0];
     const replay = await startReplay(symbol);
-    const row = FIXTURE.symbols[symbol].ticks.find(([t]) => t >= '09:24:58')!;
+    const row = [...FIXTURE.symbols[symbol].ticks]
+      .reverse()
+      .find(
+        ([t, , , , , volume, , a1, b1]) => t < '09:25:00' && volume === 0 && a1 > 0 && a1 === b1,
+      )!;
     await replay.feed(snapshotOf(symbol, row));
     const cell = replay.quotes.at(-1)!;
     expect(row[7]).toBe(row[8]);
@@ -230,16 +240,16 @@ describe('ricequant replay 2026-09-30: bars land only inside trading sessions', 
     );
   });
 
-  it('the 11:30:01 snapshot belongs to the 11:25 bar and lunch polls change nothing', async () => {
-    const symbol = '600519.SH';
+  it('the last morning snapshot (11:30:0x) belongs to the 11:25 bar and lunch polls change nothing', async () => {
+    const symbol = SYMBOLS[0];
     const replay = await startReplay(symbol);
-    const ticks = FIXTURE.symbols[symbol].ticks.filter(([t]) => t <= '11:30:05');
+    const ticks = FIXTURE.symbols[symbol].ticks.filter(([t]) => t < '11:31:00');
     for (const row of ticks) await replay.feed(snapshotOf(symbol, row));
     const lunchSnap = snapshotOf(symbol, ticks.at(-1)!);
-    expect(lunchSnap.datetime).toBe(`${DAY} 11:30:01`);
+    expect(lunchSnap.datetime.slice(11, 16)).toBe('11:30');
     expect([...replay.bars['5m'].keys()].at(-1)).toBe(at('11:25:00'));
     const before = PERIODS.map((p) => replay.pushes[p].length);
-    // 午休 90 分钟里每分钟一轮（盘外节奏），米筐一直返回 11:30:01 那个快照
+    // 午休 90 分钟里每分钟一轮（盘外节奏），米筐一直返回上午最后那个快照
     for (let m = 31; m < 120; m++) {
       const clock = at('11:30:00') + m * 60_000;
       await replay.feed(lunchSnap, clock);
@@ -248,7 +258,7 @@ describe('ricequant replay 2026-09-30: bars land only inside trading sessions', 
   });
 
   it('labels bars on the Beijing-time axis', async () => {
-    const replay = await replayDay('000001.SZ');
+    const replay = await replayDay(SYMBOLS[0]);
     const labels = [...replay.bars['15m'].keys()].map((ts) =>
       formatMarketTick(Math.floor(ts / 1000), 3, 'CN'),
     );
@@ -278,7 +288,7 @@ describe('ricequant replay 2026-09-30: 15:00 close freezes the day', () => {
   );
 
   it('later polls (same snapshot, or an after-hours one with more volume) do not move any bar', async () => {
-    const symbol = '688330.SH';
+    const symbol = SYMBOLS.at(-1)!;
     const replay = await replayDay(symbol);
     const before = PERIODS.map((p) => replay.pushes[p].length);
     const closing = snapshotOf(symbol, FIXTURE.symbols[symbol].ticks.at(-1)!);

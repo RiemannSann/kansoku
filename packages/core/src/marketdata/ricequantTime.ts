@@ -109,3 +109,56 @@ export function cnSnapshotFeedsBars(tsMs: number): boolean {
 export function sameShanghaiDay(a: number, b: number): boolean {
   return shanghaiMinuteOfDay(a).dayStartMs === shanghaiMinuteOfDay(b).dayStartMs;
 }
+
+/** 上海日期 "YYYY-MM-DD" */
+export function shanghaiDate(tsMs: number): string {
+  return new Date(shanghaiMinuteOfDay(tsMs).dayStartMs + SHANGHAI_OFFSET_MIN * MINUTE_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * 轮询节奏分档：
+ * - active：交易日盘中（含集合竞价、收盘撮合前后各一分钟），要高频；
+ * - break：交易日 09:00–09:15 和午休，行情不动但马上要开盘，低频；
+ * - closed：收盘后、开盘前、周末、节假日，行情定格，很低频。
+ * tradingDay 为 null（日历还没取到）时按交易日处理：宁可节假日多拉几次，也不能交易日没行情。
+ */
+export function cnPollPhase(
+  nowMs: number,
+  tradingDay: boolean | null,
+): 'active' | 'break' | 'closed' {
+  const weekday = new Date(nowMs + SHANGHAI_OFFSET_MIN * MINUTE_MS).getUTCDay();
+  if (weekday === 0 || weekday === 6 || tradingDay === false) return 'closed';
+  if (isCnActiveWindow(nowMs)) return 'active';
+  const { minute } = shanghaiMinuteOfDay(nowMs);
+  return minute >= 9 * 60 && minute < PM_CLOSE ? 'break' : 'closed';
+}
+
+/** 一天切成五段：开盘前 / 上午盘（含竞价）/ 午休 / 下午盘 / 收盘后；周末整天算"不动"的一段 */
+function cnSegment(tsMs: number): { key: string; quiet: boolean } {
+  const weekday = new Date(tsMs + SHANGHAI_OFFSET_MIN * MINUTE_MS).getUTCDay();
+  const day = shanghaiDate(tsMs);
+  if (weekday === 0 || weekday === 6) return { key: `${day}|weekend`, quiet: true };
+  const { minute } = shanghaiMinuteOfDay(tsMs);
+  const bounds = [9 * 60 + 15, 11 * 60 + 31, 12 * 60 + 59, PM_CLOSE + 1];
+  const index = bounds.filter((b) => minute >= b).length;
+  return { key: `${day}|${index}`, quiet: index % 2 === 0 };
+}
+
+/**
+ * A 股数据缓存还新不新鲜：盘中按 activeTtlMs；
+ * 开盘前、午休、收盘后、周末行情不动，同一段里按 quietTtlMs（通常长得多），一跨段立刻失效——
+ * 比如 15:00:30 拉的资金流在 15:01 收盘段开始时重拉一次，之后整晚不用再拉。
+ */
+export function cnCacheFresh(
+  atMs: number,
+  nowMs: number,
+  activeTtlMs: number,
+  quietTtlMs: number,
+): boolean {
+  const then = cnSegment(atMs);
+  const current = cnSegment(nowMs);
+  if (then.key !== current.key) return false;
+  return nowMs - atMs < (current.quiet ? quietTtlMs : activeTtlMs);
+}
