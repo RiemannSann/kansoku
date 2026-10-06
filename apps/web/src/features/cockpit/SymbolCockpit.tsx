@@ -15,6 +15,7 @@ import { marketOfSymbol } from '../../lib/market';
 import { recordRecentSymbol } from '../charts/recentCharts';
 import { Dot, ErrorBox, MarketTime, Tooltip } from '../../ui';
 import { useTitle } from '../../lib/useTitle';
+import { cnSymbolName, symbolLabel } from './symbolTitle';
 import { isDesktopRealtime } from '../../lib/portTransport';
 import { AnalysisRunDetails } from './AnalysisRunDetails';
 import { CockpitSkeleton } from './CockpitSkeleton';
@@ -180,7 +181,7 @@ const styles = stylex.create({
 });
 
 export function SymbolCockpit({ sym }: { sym: string }) {
-  const symLabel = sym.toUpperCase().replace(/\.US$/, '');
+  const symLabel = symbolLabel(sym);
   const desktopShell = isDesktopRealtime();
   const market = marketOfSymbol(sym);
   const {
@@ -209,7 +210,8 @@ export function SymbolCockpit({ sym }: { sym: string }) {
     loadHistory,
   } = useIntradayDoc(mode === 'live' ? null : latestId);
 
-  useTitle(doc ? doc.title || symLabel : latestChecked && !latestId ? symLabel : undefined);
+  // 没有分析文档时由 PreviewCockpit 自己设标题（A 股会带上中文名）
+  useTitle(doc ? doc.title || symLabel : latestError ? symLabel : undefined);
 
   useEffect(() => {
     if (doc || (latestChecked && !latestId && !latestError)) recordRecentSymbol(sym);
@@ -230,6 +232,7 @@ export function SymbolCockpit({ sym }: { sym: string }) {
   const { unread, latestAlert } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
 
   const intradaySidebar = doc?.built.kind === 'intraday' ? doc.built.sidebar : null;
+  const cnName = cnSymbolName(sym, intradaySidebar?.name);
   const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', {
     asOf: live ? undefined : intradaySidebar?.asOf,
     live,
@@ -381,7 +384,9 @@ export function SymbolCockpit({ sym }: { sym: string }) {
                 <ArrowLeft className={`icon ${stylex.props(styles.icon).className}`} size={13} />{' '}
                 列表
               </a>
-              <span className={`meta ${stylex.props(styles.topbarMeta).className}`}>{sym}</span>
+              <span className={`meta ${stylex.props(styles.topbarMeta).className}`}>
+                {cnName ? `${sym} ${cnName}` : sym}
+              </span>
               {degraded && <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />}
               <IntradayTimeframeSwitch activeTf={activeIntradayTf} onChange={setIntradayTf} />
               <AnalysisTimeline

@@ -35,6 +35,7 @@ import { useAiUnreadBadge } from './useAiUnreadBadge';
 import { useCockpitComments } from './useCockpitComments';
 import { useCockpitEnv } from './useCockpitEnv';
 import { useCockpitReviewState } from './useCockpitReviewState';
+import { cnSymbolName, symbolTitle } from './symbolTitle';
 import { colors, fontSizes, sizes } from '../../theme/tokens.stylex';
 
 const styles = stylex.create({
@@ -128,7 +129,6 @@ export function PreviewCockpit({
   onLive: () => void;
   onSelectAnalysis: (id: string | null) => void;
 }) {
-  const symLabel = sym.toUpperCase().replace(/\.US$/, '');
   const desktopShell = isDesktopRealtime();
   const {
     built,
@@ -139,7 +139,9 @@ export function PreviewCockpit({
     predictionUpdatedAt,
     predictionStale,
   } = useIntradayPreview(sym);
-  useTitle(symLabel);
+  const sidebarName = built?.sidebar.name;
+  const cnName = cnSymbolName(sym, sidebarName);
+  useTitle(symbolTitle(sym, sidebarName));
 
   const env = useCockpitEnv(sym);
   const {
@@ -258,7 +260,9 @@ export function PreviewCockpit({
                 <ArrowLeft className={`icon ${stylex.props(styles.icon).className}`} size={13} />{' '}
                 列表
               </a>
-              <span className={`meta ${stylex.props(styles.topbarMeta).className}`}>{sym}</span>
+              <span className={`meta ${stylex.props(styles.topbarMeta).className}`}>
+                {cnName ? `${sym} ${cnName}` : sym}
+              </span>
               {degraded && <Dot tone="accent" pulse title="数据延迟：行情拉取失败，正在重试" />}
               <IntradayTimeframeSwitch activeTf={activeIntradayTf} onChange={setIntradayTf} />
               <AnalysisTimeline
