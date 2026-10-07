@@ -1,7 +1,9 @@
+import { suffixBareCnCode } from '@kansoku/shared/cnCode';
+
 export function normalizeSymbol(raw: string): string | null {
   let sym = raw.trim().toUpperCase();
   if (!sym) return null;
-  if (!sym.includes('.')) sym += '.US';
+  if (!sym.includes('.')) sym = suffixBareCnCode(sym) ?? `${sym}.US`;
   return /^[\d.A-Z]+$/.test(sym) ? sym : null;
 }
 

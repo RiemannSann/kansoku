@@ -34,6 +34,16 @@ describe('normalizeSymbol', () => {
     expect(normalizeSymbol('mu')).toBe('MU.US');
   });
 
+  it('suffixes a bare six-digit A-share code by its code range, the way 同花顺 takes it', () => {
+    expect(normalizeSymbol('600487')).toBe('600487.SH');
+    expect(normalizeSymbol('688981')).toBe('688981.SH');
+    expect(normalizeSymbol('510300')).toBe('510300.SH');
+    expect(normalizeSymbol('000001')).toBe('000001.SZ');
+    expect(normalizeSymbol('300750')).toBe('300750.SZ');
+    expect(normalizeSymbol('159915')).toBe('159915.SZ');
+    expect(normalizeSymbol('000001.SH')).toBe('000001.SH');
+  });
+
   it('passes an existing .US suffix through unchanged', () => {
     expect(normalizeSymbol('mu.us')).toBe('MU.US');
   });

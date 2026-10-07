@@ -1,3 +1,4 @@
+import { suffixBareCnCode } from '@kansoku/shared/cnCode';
 import { ClientError } from '../platform/errors.js';
 
 const SYMBOL_RE = /^[\d.A-Z]+$/;
@@ -14,7 +15,7 @@ export function marketOf(symbol: string): Market {
 
 export function normalizeSymbol(raw: string): string {
   let sym = raw.trim().toUpperCase();
-  if (!sym.includes('.')) sym += '.US';
+  if (!sym.includes('.')) sym = suffixBareCnCode(sym) ?? `${sym}.US`;
   if (!SYMBOL_RE.test(sym)) {
     throw new ClientError(`invalid symbol: ${raw}`, 'e.g. MU or MU.US');
   }
