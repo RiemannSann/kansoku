@@ -27,12 +27,12 @@ const styles = stylex.create({
     'display': 'grid',
     'fontVariantNumeric': 'tabular-nums',
     'gap': '20px',
-    'gridTemplateColumns': 'auto 1fr auto',
+    'gridTemplateColumns': 'auto minmax(0, 1fr) auto',
     'margin': '4px 0 12px',
     'padding': '6px 12px',
     '@media (max-width: 900px)': {
       gap: '8px',
-      gridTemplateColumns: '1fr',
+      gridTemplateColumns: 'minmax(0, 1fr)',
     },
   },
   id: {
@@ -54,12 +54,16 @@ const styles = stylex.create({
     fontSize: fontSizes.sm,
     fontVariantNumeric: 'tabular-nums',
   },
+  // 指数条不折行：窗口不到 1500 宽时先收起点位只留涨跌幅，再窄就横向滚动
   cluster: {
     alignItems: 'center',
     display: 'flex',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: '14px',
     minWidth: 0,
+    overflowX: 'auto',
+    scrollbarWidth: 'thin',
+    whiteSpace: 'nowrap',
   },
   sessionTag: {
     marginLeft: '8px',
@@ -72,12 +76,19 @@ const styles = stylex.create({
       ':hover': colors.accent,
     },
     display: 'inline-flex',
+    flexShrink: 0,
     gap: '6px',
     textDecoration: 'none',
   },
   indexCellCompact: {
     fontSize: fontSizes.sm,
     gap: '4px',
+  },
+  indexPoint: {
+    display: {
+      'default': 'inline',
+      '@media (max-width: 1499px)': 'none',
+    },
   },
   indexSymbol: {
     color: colors.textPrimary,
@@ -128,14 +139,14 @@ function IndexCell({ q }: { q: QuoteCell }) {
     <a
       {...stylex.props(styles.indexCell, extras.point != null && styles.indexCellCompact)}
       href={`/symbol/${encodeURIComponent(q.symbol)}`}
-      title={INDEX_LABELS[q.symbol]}
+      title={[INDEX_LABELS[q.symbol], extras.point].filter(Boolean).join(' ')}
     >
       <span className={`idx-sym ${stylex.props(styles.indexSymbol).className}`}>
         {INDEX_SHORT_LABELS[q.symbol] ?? INDEX_LABELS[q.symbol] ?? q.symbol.replace(/\.US$/, '')}
       </span>
       {extras.point && (
         <span
-          className={`num ${stylex.props(styles.number, tone === 'up' && styles.up, tone === 'down' && styles.down).className}`}
+          className={`num idx-point ${stylex.props(styles.number, styles.indexPoint, tone === 'up' && styles.up, tone === 'down' && styles.down).className}`}
         >
           {extras.point}
         </span>
