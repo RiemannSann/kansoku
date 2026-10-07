@@ -11,6 +11,25 @@ describe('buildCnLiveView', () => {
     );
   });
 
+  it('marks shares estimated from the compact dashboard', () => {
+    const view = buildCnLiveView({
+      connected: true,
+      updatedAt: null,
+      parts: [
+        {
+          section: 'sold',
+          label: '清仓中',
+          shares: 200,
+          sharesEstimated: true,
+          avgPx: 19,
+          notional: 4100,
+          retPct: 7.89,
+        },
+      ],
+    });
+    expect(view.rows[0]!.shares).toBe('约 200 股');
+  });
+
   it('formats each section as one row', () => {
     const view = buildCnLiveView({
       connected: true,
@@ -20,6 +39,7 @@ describe('buildCnLiveView', () => {
           section: 'buy',
           label: '今日买入',
           shares: 1500,
+          sharesEstimated: false,
           avgPx: 20.1,
           notional: 30150,
           retPct: 1.99,
@@ -28,6 +48,7 @@ describe('buildCnLiveView', () => {
           section: 'available',
           label: '可卖',
           shares: null,
+          sharesEstimated: false,
           avgPx: null,
           notional: 1.2e8,
           retPct: -0.5,

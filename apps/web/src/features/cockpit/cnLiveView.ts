@@ -34,7 +34,11 @@ export function buildCnLiveView(holding: CnLiveHolding): CnLiveView {
     updatedAt: holding.updatedAt,
     rows: holding.parts.map((part) => ({
       label: part.label,
-      shares: part.shares == null ? '—' : `${part.shares.toLocaleString('en-US')} 股`,
+      // 看板精简模式下股数是按 市值 ÷ 价格 估的，标「约」
+      shares:
+        part.shares == null
+          ? '—'
+          : `${part.sharesEstimated ? '约 ' : ''}${part.shares.toLocaleString('en-US')} 股`,
       // 股票两位小数；ETF / 可转债是三位（看板按代码给的位数，这里看有没有第三位）
       avgPx:
         part.avgPx == null

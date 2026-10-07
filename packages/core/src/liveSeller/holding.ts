@@ -39,6 +39,25 @@ function sharesOf(section: LiveSellerSection, cells: string[]): number | null {
   return total;
 }
 
+/**
+ * 看板精简模式（--compact）没有分服务器的股数列，只能反推：
+ * 今日买入的 Notional 是成交额（≈ 股数 × 均价），清仓中的 Notional 是剩余股数 × 现价。
+ * 可卖表没有价格列，推不出来。
+ */
+function estimateShares(
+  key: CnLiveHoldingPart['section'],
+  notional: number | null,
+  avgPx: number | null,
+  section: LiveSellerSection,
+  cells: string[],
+): number | null {
+  if (notional == null || notional <= 0) return null;
+  const price =
+    key === 'buy' ? avgPx : key === 'sold' ? parseNumberCell(cellAt(section, cells, 'Last')) : null;
+  if (price == null || price <= 0) return null;
+  return Math.round(notional / price) || null;
+}
+
 function cellAt(section: LiveSellerSection, cells: string[], header: string): string | undefined {
   const i = section.headers.indexOf(header);
   return i >= 0 ? cells[i] : undefined;
@@ -51,12 +70,18 @@ export function cnHoldingFrom(snapshot: LiveSellerOut, symbol: string): CnLiveHo
     const section = snapshot.sections[key];
     for (const row of section.rows) {
       if (row.symbol !== symbol) continue;
+      const avgPx = parseNumberCell(cellAt(section, row.cells, 'Avg Px'));
+      const notional = parseNumberCell(cellAt(section, row.cells, 'Notional'));
+      const counted = sharesOf(section, row.cells);
+      const estimated =
+        counted == null ? estimateShares(key, notional, avgPx, section, row.cells) : null;
       parts.push({
         section: key,
         label: SECTION_LABELS[key],
-        shares: sharesOf(section, row.cells),
-        avgPx: parseNumberCell(cellAt(section, row.cells, 'Avg Px')),
-        notional: parseNumberCell(cellAt(section, row.cells, 'Notional')),
+        shares: counted ?? estimated,
+        sharesEstimated: counted == null && estimated != null,
+        avgPx,
+        notional,
         retPct: parsePercentCell(
           cellAt(section, row.cells, key === 'available' ? 'EstNow%' : 'Ret'),
         ),

@@ -897,8 +897,10 @@ export interface CockpitPosition {
 export interface CnLiveHoldingPart {
   section: 'buy' | 'available' | 'sold';
   label: string;
-  /** 股；看板是精简模式（不分服务器列）时没有，为 null */
+  /** 股；看板是精简模式（--compact，不分服务器列）时按 市值 ÷ 价格 估算，估不出来为 null */
   shares: number | null;
+  /** shares 是估算的（精简模式） */
+  sharesEstimated: boolean;
   /** 买入均价；「可卖」表没有这一列 */
   avgPx: number | null;
   /** 市值 / 成交额（元） */

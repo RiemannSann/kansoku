@@ -1,0 +1,81 @@
+{
+  "command_log": ["(generator) command log must not leak"],
+  "compact": true,
+  "data_age_seconds": null,
+  "degraded": {
+    "level": "ok",
+    "reason": ""
+  },
+  "last_error": "",
+  "refresh_interval": 5.0,
+  "sections": {
+    "buy": {
+      "headers": ["Code", "Name", "Lane", "Notional", "Avg Px", "Last", "Ret", "Now%"],
+      "rows": [
+        {
+          "cells": ["600487", "亨通光电", "LU", "30,150", "20.10", "20.50", "+1.99%", "+3.00%"],
+          "style": ""
+        },
+        {
+          "cells": ["510300", "沪深300ETF", "-", "92,460", "4.623", "4.611", "-0.26%", "-0.40%"],
+          "style": "negative"
+        }
+      ],
+      "count": 2
+    },
+    "intent": {
+      "headers": ["Code", "Name", "Side", "Cur", "Time", "Status"],
+      "rows": [],
+      "count": 0
+    },
+    "sold": {
+      "headers": [
+        "Key",
+        "Code",
+        "Name",
+        "Notional",
+        "Avg Px",
+        "Last",
+        "Prev",
+        "Decision Review",
+        "Ret",
+        "Now%"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "a",
+            "600487",
+            "亨通光电",
+            "4,100",
+            "19.00",
+            "20.50",
+            "U",
+            "-",
+            "+7.89%",
+            "+3.00%"
+          ],
+          "style": ""
+        }
+      ],
+      "count": 1
+    },
+    "available": {
+      "headers": ["Key", "Code", "Name", "Notional", "Prev", "Decision Review", "EstNow%"],
+      "rows": [
+        {
+          "cells": ["b", "000001", "平安银行", "46,280", "Z", "-", "+0.10%"],
+          "style": ""
+        }
+      ],
+      "count": 1
+    }
+  },
+  "summary": {
+    "headers": [],
+    "rows": [],
+    "caption": ""
+  },
+  "updated_at": "10:31:05 CST",
+  "warnings": []
+}
