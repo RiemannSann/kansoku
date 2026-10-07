@@ -11,7 +11,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "live-check": "tsx rq-bridge/live_check.ts"
   },
   "dependencies": {
     "@babel/parser": "^7.29.8",
