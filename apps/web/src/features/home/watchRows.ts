@@ -1,6 +1,7 @@
 import type { QuoteCell } from '@kansoku/shared/types';
 import { limitState } from '@web/lib/limitState';
 import { marketOfSymbol } from '@web/lib/market';
+import type { WatchSector } from '@web/features/sectors/sectorView';
 
 export interface WatchRow {
   symbol: string;
@@ -17,17 +18,23 @@ export interface WatchRow {
   turnover: number | null;
   session: string;
   atLimit: 'up' | 'down' | null;
+  /** 所属申万二级行业当日表现；行业数据没到或不是股票（ETF）时为 null */
+  sector: WatchSector | null;
+  /** 排序用：所属行业涨跌幅 */
+  sectorPct: number | null;
   /** 在自选文件里的顺序（行情推送的顺序），「默认排序」就按它 */
   order: number;
 }
 
-export type SortKey = 'order' | 'code' | 'pct' | 'change' | 'last' | 'volume' | 'turnover';
+export type SortKey =
+  'order' | 'code' | 'pct' | 'change' | 'last' | 'volume' | 'turnover' | 'sectorPct';
 export type SortDir = 'asc' | 'desc';
 
 export function buildWatchRows(
   quotes: QuoteCell[],
   profiles: Record<string, { name?: string }>,
   exclude: ReadonlySet<string>,
+  sectors: Record<string, WatchSector> = {},
 ): WatchRow[] {
   const rows: WatchRow[] = [];
   const seen = new Set<string>();
@@ -47,6 +54,8 @@ export function buildWatchRows(
       turnover: quote.turnover ?? null,
       session: quote.session,
       atLimit: limitState(quote),
+      sector: sectors[quote.symbol] ?? null,
+      sectorPct: sectors[quote.symbol]?.pct ?? null,
       order: rows.length,
     });
   }

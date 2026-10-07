@@ -44,6 +44,17 @@ describe('buildWatchRows', () => {
     expect(rows[2].atLimit).toBe('up');
     expect(rows[3].change).toBeNull();
   });
+
+  it('attaches the industry and sorts by industry change with unknown industries last', () => {
+    const withSectors = buildWatchRows(quotes, {}, new Set(['000001.SH']), {
+      '600519.SH': { name: '白酒Ⅱ', pct: -0.4, limitUp: 0, title: '' },
+      '000001.SZ': { name: '股份制银行Ⅱ', pct: 0.8, limitUp: 1, title: '' },
+    });
+    expect(withSectors[0]).toMatchObject({ sector: { name: '白酒Ⅱ' }, sectorPct: -0.4 });
+    expect(withSectors[2]!.sector).toBeNull();
+    const sorted = sortWatchRows(withSectors, 'sectorPct', 'desc').map((r) => r.code);
+    expect(sorted).toEqual(['000001', '600519', '688330', '300750']);
+  });
 });
 
 describe('sortWatchRows', () => {

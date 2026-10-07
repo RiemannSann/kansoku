@@ -772,6 +772,62 @@ export interface Timeshare {
   asOf: string | null;
 }
 
+/** 申万行业当日统计（一级 31 个、二级 131 个；代码就是申万行业指数代码，如 801780.INDX = 银行） */
+export interface SectorStat {
+  code: string;
+  name: string;
+  level: 1 | 2;
+  /** 二级行业所属的一级行业代码 */
+  parent?: string;
+  /** 当日涨跌幅（%）：优先用申万行业指数；指数没取到时用成员股简单平均 */
+  pct: number | null;
+  pctFromIndex: boolean;
+  members: number;
+  up: number;
+  down: number;
+  flat: number;
+  limitUp: number;
+  limitDown: number;
+  /** 成员股成交额合计（元） */
+  turnover: number;
+  /** 涨幅最大的成员股 */
+  leader: { symbol: string; name: string; pct: number } | null;
+}
+
+/** 全市场申万行业排行（cn-sectors 频道） */
+export interface SectorBoard {
+  asOf: string | null;
+  /** 按涨跌幅从高到低 */
+  l1: SectorStat[];
+  l2: SectorStat[];
+  /** 订阅时带上的个股 → 所属一级/二级行业代码 */
+  memberOf: Record<string, { l1: string; l2: string | null }>;
+}
+
+export interface SectorMember {
+  symbol: string;
+  name: string;
+  last: number | null;
+  pct: number | null;
+  turnover: number;
+  limit: 'up' | 'down' | null;
+}
+
+/** 某个申万行业的成员（cn-sector 频道），按涨跌幅从高到低 */
+export interface SectorDetail {
+  asOf: string | null;
+  stat: SectorStat;
+  members: SectorMember[];
+}
+
+/** 个股所属申万行业及其当日表现（cn-industry 频道）；不在申万分类里（ETF、指数）时两项都是 null */
+export interface StockIndustry {
+  symbol: string;
+  asOf: string | null;
+  l1: SectorStat | null;
+  l2: SectorStat | null;
+}
+
 export interface QuoteSnapshot {
   ts: number;
   quotes: QuoteCell[];

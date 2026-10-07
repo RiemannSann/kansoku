@@ -67,6 +67,8 @@ def ensure_init() -> None:
 
 def to_rq(symbol: str) -> str:
     code, _, suffix = symbol.upper().partition(".")
+    if suffix == "INDX":  # 申万行业指数等，米筐原样代码（801780.INDX）
+        return f"{code}.INDX"
     mapped = SUFFIX_TO_RQ.get(suffix)
     if not mapped:
         raise ValueError(f"米筐只支持沪深 A 股代码（.SH / .SZ），收到 {symbol}")
@@ -340,8 +342,70 @@ def m_market_caps(params):
     return caps
 
 
+def m_sw_map(_params):
+    """全市场在市 A 股 → 申万一级/二级行业（代码就是行业指数代码，如 801780.INDX）和股票名称。
+
+    一天取一次就够（TS 那边落盘缓存）；实测约 0.5 MB 流量。
+    """
+    stocks = rq.all_instruments(type="CS", market="cn")
+    stocks = stocks[stocks["status"] == "Active"]
+    ids = list(stocks["order_book_id"])
+    names = dict(zip(stocks["order_book_id"], stocks["symbol"]))
+    out_stocks: dict[str, dict] = {}
+    industries: dict[str, dict] = {}
+    df = rq.get_instrument_industry(ids, source="sws", level=0) if ids else None
+    if df is not None and not df.empty:
+        for order_book_id, row in df.iterrows():
+            l1 = text(row.get("first_industry_code"))
+            l2 = text(row.get("second_industry_code"))
+            if not l1:
+                continue
+            out_stocks[from_rq(order_book_id)] = {
+                "name": text(names.get(order_book_id)),
+                "l1": l1,
+                "l2": l2,
+            }
+            industries[l1] = {"name": text(row.get("first_industry_name")), "level": 1}
+            if l2:
+                industries[l2] = {
+                    "name": text(row.get("second_industry_name")),
+                    "level": 2,
+                    "parent": l1,
+                }
+    return {"day": today_cn().isoformat(), "stocks": out_stocks, "industries": industries}
+
+
+def m_market_snapshot(params):
+    """精简快照：只给算行业涨跌、涨停家数要用的字段（股票或行业指数都行），全市场一次约 0.8 MB。"""
+    ids = [to_rq(s) for s in params["symbols"]]
+    if not ids:
+        return []
+    snaps = rq.current_snapshot(ids)
+    if not isinstance(snaps, list):
+        snaps = [snaps]
+    out = []
+    for snap in snaps:
+        if snap is None:
+            continue
+        out.append(
+            {
+                "symbol": from_rq(snap.order_book_id),
+                "datetime": stamp(snap.datetime),
+                "last": num(snap.last),
+                "prev_close": num(snap.prev_close),
+                "limit_up": num(getattr(snap, "limit_up", None)),
+                "limit_down": num(getattr(snap, "limit_down", None)),
+                "volume": num(snap.volume) or 0,
+                "turnover": num(snap.total_turnover) or 0,
+            }
+        )
+    return out
+
+
 METHODS = {
     "ping": m_ping,
+    "sw_map": m_sw_map,
+    "market_snapshot": m_market_snapshot,
     "calendar": m_calendar,
     "kline": m_kline,
     "snapshot": m_snapshot,

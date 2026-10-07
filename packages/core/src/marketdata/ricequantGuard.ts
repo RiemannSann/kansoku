@@ -10,7 +10,7 @@ import { cnPollPhase, shanghaiDate } from './ricequantTime.js';
 //
 //   normal  < 50%   盘中 3 秒一轮
 //   caution ≥ 50%   盘中 6 秒一轮
-//   saving  ≥ 75%   盘中 15 秒一轮；停掉首页资金流合计、市值这类可有可无的请求
+//   saving  ≥ 75%   盘中 15 秒一轮；停掉首页资金流合计、市值、申万行业全市场快照这类可有可无的请求
 //   stop    ≥ 90%   盘中 60 秒一轮；只保留报价和 K 线，K 线一次最多 300 根
 //
 // 除了「已用多少」，还按最近的消耗速度推算到今天结束会用到多少；推算值最多把档位抬到 saving，
@@ -56,7 +56,7 @@ const SNAPSHOT_CAP: Record<QuotaTier, number> = {
   stop: 100,
 };
 
-const SAVING_BLOCKED = new Set(['flow_totals', 'market_caps']);
+const SAVING_BLOCKED = new Set(['flow_totals', 'market_caps', 'market_snapshot']);
 const STOP_BLOCKED = new Set([...SAVING_BLOCKED, 'flow', 'profiles', 'news']);
 const STOP_KLINE_MAX = 300;
 

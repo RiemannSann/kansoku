@@ -9,6 +9,10 @@ export type ChannelSpec =
   | { kind: 'position'; symbol: string }
   | { kind: 'depth'; symbol: string }
   | { kind: 'timeshare'; symbol: string }
+  // 申万行业：全市场排行（extra = 想知道所属行业的个股）、某行业成员、某只股票所属行业
+  | { kind: 'cn-sectors'; extra?: string[] }
+  | { kind: 'cn-sector'; symbol: string }
+  | { kind: 'cn-industry'; symbol: string }
   | { kind: 'benchmark'; symbol: string }
   | { kind: 'preview'; symbol: string }
   | { kind: 'board' }

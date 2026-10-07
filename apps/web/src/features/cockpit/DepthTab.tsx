@@ -4,6 +4,7 @@ import type { QuoteDepth } from '@kansoku/shared/types';
 import { useWsChannel } from '@web/lib/ws/useWsChannel';
 import { Badge, Empty, MarketTime, NoteBlock } from '@web/ui';
 import { colors, fontSizes, fonts } from '../../theme/tokens.stylex';
+import { IndustryLine } from '../sectors/IndustryLine';
 import { buildDepthView, type DepthRow, type Tone } from './depthView';
 
 const styles = stylex.create({
@@ -164,6 +165,7 @@ export function DepthTab({ symbol }: { symbol: string }) {
           </div>
         ))}
       </div>
+      <IndustryLine symbol={symbol} />
       <div {...stylex.props(styles.asOf)}>
         快照时间 <MarketTime value={depth.asOf} market="CN" format="clock-seconds" />
       </div>

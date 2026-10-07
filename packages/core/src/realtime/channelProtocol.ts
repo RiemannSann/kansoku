@@ -11,6 +11,7 @@ import { coreAiChannels } from './aiChannels.js';
 import { subscribeAnalyses } from './analyses.js';
 import { subscribeBenchmark } from './benchmark.js';
 import { subscribeBoard } from './board.js';
+import { getSectorService } from './cnSectors.js';
 import { subscribeDepth } from './depth.js';
 import { subscribeChart, subscribePreview } from './charts.js';
 import type { Connection } from './connection.js';
@@ -33,6 +34,9 @@ const STATIC_KINDS = [
   'events',
   'depth',
   'timeshare',
+  'cn-sectors',
+  'cn-sector',
+  'cn-industry',
 ] as const;
 
 export interface WsSub {
@@ -98,6 +102,16 @@ export function parseWsMessage(raw: unknown): WsClientMessage | null {
   if (msg.kind === 'depth') {
     if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
     return { op: 'sub', key: msg.key, kind: 'depth', symbol: msg.symbol };
+  }
+  if (msg.kind === 'cn-sectors') {
+    const extra = Array.isArray(msg.extra)
+      ? msg.extra.filter((s): s is string => typeof s === 'string' && s.length > 0).slice(0, 400)
+      : [];
+    return { op: 'sub', key: msg.key, kind: 'cn-sectors', extra };
+  }
+  if (msg.kind === 'cn-sector' || msg.kind === 'cn-industry') {
+    if (typeof msg.symbol !== 'string' || !msg.symbol) return null;
+    return { op: 'sub', key: msg.key, kind: msg.kind, symbol: msg.symbol };
   }
   if (msg.kind === 'board') {
     return { op: 'sub', key: msg.key, kind: 'board' };
@@ -173,6 +187,12 @@ async function attachChannel(msg: WsSub, push: (envelope: string) => void): Prom
   if (msg.kind === 'timeshare')
     return subscribeTimeshare(normalizeSymbol(msg.symbol as string), push);
   if (msg.kind === 'depth') return subscribeDepth(normalizeSymbol(msg.symbol as string), push);
+  if (msg.kind === 'cn-sectors')
+    return getSectorService().subscribeBoard((msg.extra ?? []).map(normalizeSymbol), push);
+  if (msg.kind === 'cn-sector')
+    return getSectorService().subscribeSector(normalizeSymbol(msg.symbol as string), push);
+  if (msg.kind === 'cn-industry')
+    return getSectorService().subscribeIndustry(normalizeSymbol(msg.symbol as string), push);
   if (msg.kind === 'board') return subscribeBoard(push);
   const channel = findChannel(msg.kind);
   if (channel) return channel.attach(msg as unknown as Record<string, unknown>, push);

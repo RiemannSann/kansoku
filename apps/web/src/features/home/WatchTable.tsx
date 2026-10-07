@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import type { QuoteCell } from '@kansoku/shared/types';
+import type { QuoteCell, SectorBoard } from '@kansoku/shared/types';
 import { formatAmount, formatLots } from '@web/features/cockpit/depthView';
+import { formatPct, watchSectors } from '@web/features/sectors/sectorView';
 import { LIMIT_LABEL } from '@web/lib/limitState';
+import { useWsChannel } from '@web/lib/ws/useWsChannel';
 import { Badge, Empty } from '@web/ui';
 import { colors, fontSizes, fonts } from '../../theme/tokens.stylex';
 import { INDEX_SYMBOLS } from './indexSymbols';
@@ -56,6 +58,9 @@ const styles = stylex.create({
   name: { color: colors.textPrimary },
   link: { color: 'inherit', textDecoration: 'none' },
   badge: { marginLeft: '6px' },
+  sector: { color: colors.textSecondary, fontFamily: fonts.ui },
+  sectorPct: { fontFamily: fonts.mono, marginLeft: '6px' },
+  sectorLimit: { color: colors.up, fontSize: fontSizes.caption, marginLeft: '6px' },
   up: { color: colors.up },
   down: { color: colors.down },
   flat: { color: colors.textPrimary },
@@ -69,6 +74,7 @@ const COLUMNS: Array<{ key: SortKey; label: string; left?: boolean }> = [
   { key: 'change', label: '涨跌' },
   { key: 'volume', label: '成交量(手)' },
   { key: 'turnover', label: '成交额' },
+  { key: 'sectorPct', label: '行业', left: true },
 ];
 
 function readSort(): { key: SortKey; dir: SortDir } {
@@ -84,6 +90,8 @@ function readSort(): { key: SortKey; dir: SortDir } {
 
 const toneOf = (row: WatchRow) =>
   row.pct == null || row.pct === 0 ? styles.flat : row.pct > 0 ? styles.up : styles.down;
+const sectorTone = (pct: number | null) =>
+  pct == null || Math.abs(pct) < 0.005 ? styles.flat : pct > 0 ? styles.up : styles.down;
 const digits = (row: WatchRow) => (row.last < 10 && Math.round(row.last * 1000) % 10 !== 0 ? 3 : 2);
 
 /** A 股自选表：和同花顺自选股列表一样一行一只，点表头排序（降序 → 升序 → 自选顺序） */
@@ -95,7 +103,24 @@ export function WatchTable({
   profiles: Record<string, { name?: string }>;
 }) {
   const [sort, setSort] = useState(readSort);
-  const rows = sortWatchRows(buildWatchRows(quotes, profiles, INDEX_SET), sort.key, sort.dir);
+  const [board, setBoard] = useState<SectorBoard | null>(null);
+  // 排好序再拼成频道参数，行情推送顺序变了也不会重新订阅
+  const cnSymbols = useMemo(
+    () => [...new Set(buildWatchRows(quotes, profiles, INDEX_SET).map((row) => row.symbol))].sort(),
+    [quotes, profiles],
+  );
+  const extraKey = cnSymbols.join(',');
+  const spec = useMemo(
+    () => (extraKey ? { kind: 'cn-sectors' as const, extra: extraKey.split(',') } : null),
+    [extraKey],
+  );
+  useWsChannel<SectorBoard>(spec, setBoard);
+  const sectors = useMemo(() => watchSectors(board), [board]);
+  const rows = sortWatchRows(
+    buildWatchRows(quotes, profiles, INDEX_SET, sectors),
+    sort.key,
+    sort.dir,
+  );
   if (!rows.length)
     return <Empty>A 股自选还没有行情（检查 ~/.config/kansoku/cn-watchlist.txt）</Empty>;
 
@@ -170,6 +195,24 @@ export function WatchTable({
               </td>
               <td {...stylex.props(styles.td)}>
                 {row.turnover == null ? '—' : formatAmount(row.turnover)}
+              </td>
+              <td
+                {...stylex.props(styles.td, styles.tdLeft, styles.sector)}
+                title={row.sector?.title}
+              >
+                {row.sector ? (
+                  <>
+                    {row.sector.name}
+                    <span {...stylex.props(styles.sectorPct, sectorTone(row.sector.pct))}>
+                      {formatPct(row.sector.pct)}
+                    </span>
+                    {row.sector.limitUp > 0 && (
+                      <span {...stylex.props(styles.sectorLimit)}>涨停{row.sector.limitUp}</span>
+                    )}
+                  </>
+                ) : (
+                  '—'
+                )}
               </td>
             </tr>
           );
