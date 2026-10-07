@@ -56,6 +56,11 @@ export function formatAmount(yuan: number): string {
   return yuan.toFixed(0);
 }
 
+/** 带正负号的金额缩写（资金流纵轴用：A 股十位数的数字直接写会被截掉） */
+export function formatSignedAmount(yuan: number): string {
+  return `${yuan < 0 ? '-' : ''}${formatAmount(Math.abs(yuan))}`;
+}
+
 export function buildDepthView(depth: QuoteDepth): DepthView {
   const digits = priceDigits(depth);
   const price = (p: number | null) => (p == null ? '—' : p.toFixed(digits));

@@ -4,6 +4,7 @@ import {
   formatMarketDateTime,
   localMarketTimeLabel,
 } from '@kansoku/shared/time';
+import type { Market } from '@kansoku/shared/time';
 import { theme } from '@web/lib/theme';
 
 export const tooltipContentStyle: CSSProperties = {
@@ -24,6 +25,15 @@ export const tooltipItemStyle: CSSProperties = { color: theme.textPrimary };
 
 export function hhmm(t: number): string {
   return formatMarketClock(new Date(t));
+}
+
+/** 横轴时刻按这只票自己市场的时间（A 股北京时间）；不传市场时和 hhmm 一样按美东 */
+export function hhmmIn(market: Market): (t: number) => string {
+  return (t) => formatMarketClock(new Date(t), false, market);
+}
+
+export function tooltipTimeIn(market: Market): (t: number) => string {
+  return (t) => formatMarketDateTime(new Date(t), true, market);
 }
 
 export function tooltipTime(t: number): string {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { QuoteDepth } from '@kansoku/shared/types';
-import { buildDepthView, formatAmount, formatLots } from './depthView';
+import { buildDepthView, formatAmount, formatLots, formatSignedAmount } from './depthView';
 
 function depth(over: Partial<QuoteDepth> = {}): QuoteDepth {
   return {
@@ -88,5 +88,13 @@ describe('lots and amount formatting', () => {
     expect(formatAmount(5_000)).toBe('5000');
     expect(formatAmount(123_456)).toBe('12万');
     expect(formatAmount(2.5e8)).toBe('2.50亿');
+  });
+});
+
+describe('formatSignedAmount', () => {
+  it('keeps the sign and abbreviates to 亿 / 万', () => {
+    expect(formatSignedAmount(-1.5e9)).toBe('-15.00亿');
+    expect(formatSignedAmount(23_000)).toBe('2万');
+    expect(formatSignedAmount(0)).toBe('0');
   });
 });

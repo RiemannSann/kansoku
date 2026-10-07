@@ -12,11 +12,15 @@ import {
 import type { CapitalBucket, CockpitFlow } from '@kansoku/shared/types';
 import {
   hhmm,
+  hhmmIn,
   tooltipContentStyle,
   tooltipItemStyle,
   tooltipLabelStyle,
   tooltipTime,
+  tooltipTimeIn,
 } from '@web/features/charts/simple/theme';
+import { formatSignedAmount } from './depthView';
+import { marketOfSymbol } from '@web/lib/market';
 import { client } from '@web/lib/client';
 import { signed, upDown } from '@web/lib/format';
 import { NoteBlock, SectionTitle } from '@web/ui';
@@ -67,7 +71,8 @@ function BucketRow({ label, bucket }: { label: string; bucket: CapitalBucket }) 
   );
 }
 
-function FlowMiniChart({ flow }: { flow: CockpitFlow }) {
+function FlowMiniChart({ flow, symbol }: { flow: CockpitFlow; symbol: string }) {
+  const cn = marketOfSymbol(symbol) === 'CN';
   const data = flow.curve
     .map((p) => ({ t: p.time, v: p.value }))
     .filter((d) => Number.isFinite(d.t) && Number.isFinite(d.v));
@@ -78,13 +83,14 @@ function FlowMiniChart({ flow }: { flow: CockpitFlow }) {
           <CartesianGrid stroke={colors.border} vertical={false} />
           <XAxis
             dataKey="t"
-            tickFormatter={hhmm}
+            tickFormatter={cn ? hhmmIn('CN') : hhmm}
             tick={{ fill: colors.textSecondary, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: colors.borderStrong }}
             minTickGap={40}
           />
           <YAxis
+            tickFormatter={cn ? formatSignedAmount : undefined}
             tick={{ fill: colors.textSecondary, fontSize: 11 }}
             tickLine={false}
             axisLine={false}
@@ -95,7 +101,7 @@ function FlowMiniChart({ flow }: { flow: CockpitFlow }) {
             contentStyle={tooltipContentStyle}
             labelStyle={tooltipLabelStyle}
             itemStyle={tooltipItemStyle}
-            labelFormatter={(t) => tooltipTime(Number(t))}
+            labelFormatter={(t) => (cn ? tooltipTimeIn('CN') : tooltipTime)(Number(t))}
             formatter={(value) => [Number(value).toLocaleString(), '净流入']}
           />
           <ReferenceLine y={0} stroke={colors.borderStrong} />
@@ -123,7 +129,7 @@ export function FlowTab({ symbol }: { symbol: string }) {
   return (
     <>
       <SectionTitle>资金净流入（原始数值，单位未知）</SectionTitle>
-      <FlowMiniChart flow={flow} />
+      <FlowMiniChart flow={flow} symbol={symbol} />
       {flow.distribution ? (
         <>
           <SectionTitle>大/中/小单净额</SectionTitle>
