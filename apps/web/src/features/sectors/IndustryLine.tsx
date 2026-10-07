@@ -21,7 +21,12 @@ const styles = stylex.create({
   label: { color: colors.textSecondary },
   name: { color: colors.textPrimary },
   pct: { fontFamily: fonts.mono, fontVariantNumeric: 'tabular-nums', textAlign: 'right' },
-  breadth: { color: colors.textSecondary, fontSize: fontSizes.caption, textAlign: 'right' },
+  breadth: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.caption,
+    textAlign: 'right',
+    whiteSpace: 'nowrap',
+  },
   note: { color: colors.textMuted, fontSize: fontSizes.sm, gridColumn: '1 / -1' },
   up: { color: colors.up },
   down: { color: colors.down },
