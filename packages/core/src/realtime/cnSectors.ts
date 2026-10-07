@@ -173,14 +173,15 @@ export function createSectorService(deps: SectorServiceDeps = {}) {
         if (providerName() !== 'ricequant') {
           throw new Error('申万行业数据需要 A 股走米筐（MARKET_PROVIDER_CN=ricequant）');
         }
-        await ensureMap();
-        const current = map as SwMap;
+        // 先看流量保护：全市场快照被停时，行业归属表（约 0.5 MB）取了也用不上，一起不取
         const blocked = guard.blockReason(SNAPSHOT_METHOD);
         if (blocked) {
           // 已经有一份数据就继续显示，不算出错；一份都没有才报出来
           if (!snapshot) throw new Error(blocked);
           return;
         }
+        await ensureMap();
+        const current = map as SwMap;
         const symbols = [...Object.keys(current.stocks), ...Object.keys(current.industries)];
         const fetched = await call<MarketRow[]>(SNAPSHOT_METHOD, { symbols });
         rows = new Map(fetched.map((row) => [row.symbol, row]));
