@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { signed, upDown } from '@web/lib/format';
 import { Badge, DataAgeBadge, Dot } from '@web/ui';
 import { colors, fonts, fontSizes } from '../../theme/tokens.stylex';
-import { INDEX_LABELS, INDEX_SYMBOLS } from './indexSymbols';
+import { INDEX_LABELS, INDEX_SHORT_LABELS, INDEX_SYMBOLS, indexCellExtras } from './indexSymbols';
 import { RecapCell } from './RecapCell';
 
 interface HomeTopStripProps {
@@ -75,6 +75,10 @@ const styles = stylex.create({
     gap: '6px',
     textDecoration: 'none',
   },
+  indexCellCompact: {
+    fontSize: fontSizes.sm,
+    gap: '4px',
+  },
   indexSymbol: {
     color: colors.textPrimary,
     fontWeight: 600,
@@ -119,17 +123,29 @@ const styles = stylex.create({
 
 function IndexCell({ q }: { q: QuoteCell }) {
   const tone = q.pct == null ? '' : upDown(q.pct);
+  const extras = indexCellExtras(q);
   return (
-    <a {...stylex.props(styles.indexCell)} href={`/symbol/${encodeURIComponent(q.symbol)}`}>
+    <a
+      {...stylex.props(styles.indexCell, extras.point != null && styles.indexCellCompact)}
+      href={`/symbol/${encodeURIComponent(q.symbol)}`}
+      title={INDEX_LABELS[q.symbol]}
+    >
       <span className={`idx-sym ${stylex.props(styles.indexSymbol).className}`}>
-        {INDEX_LABELS[q.symbol] ?? q.symbol.replace(/\.US$/, '')}
+        {INDEX_SHORT_LABELS[q.symbol] ?? INDEX_LABELS[q.symbol] ?? q.symbol.replace(/\.US$/, '')}
       </span>
+      {extras.point && (
+        <span
+          className={`num ${stylex.props(styles.number, tone === 'up' && styles.up, tone === 'down' && styles.down).className}`}
+        >
+          {extras.point}
+        </span>
+      )}
       <span
         className={`num ${tone} ${stylex.props(styles.number, tone === 'up' && styles.up, tone === 'down' && styles.down).className}`}
       >
         {q.pct == null ? '—' : `${signed(q.pct)}%`}
       </span>
-      {q.session !== '日盘' && <Badge className="qc-session">{q.session}</Badge>}
+      {extras.badge && <Badge className="qc-session">{extras.badge}</Badge>}
     </a>
   );
 }
