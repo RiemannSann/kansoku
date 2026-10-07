@@ -893,6 +893,29 @@ export interface CockpitPosition {
   } | null;
 }
 
+/** A 股实盘仓位的一段（来自 StockSeller 看板的一个表）：今日买入 / 可卖 / 清仓中 */
+export interface CnLiveHoldingPart {
+  section: 'buy' | 'available' | 'sold';
+  label: string;
+  /** 股；看板是精简模式（不分服务器列）时没有，为 null */
+  shares: number | null;
+  /** 买入均价；「可卖」表没有这一列 */
+  avgPx: number | null;
+  /** 市值 / 成交额（元） */
+  notional: number | null;
+  /** 收益（%）：今日买入和清仓中是看板的 Ret，可卖是 EstNow% */
+  retPct: number | null;
+}
+
+/** 个股页「环境」tab 的 A 股实盘仓位（只读 StockSeller GET /api/snapshot，不问长桥） */
+export interface CnLiveHolding {
+  /** 看板连上了没有（没开时为 false，parts 为空） */
+  connected: boolean;
+  /** 看板的更新时间（原样） */
+  updatedAt: string | null;
+  parts: CnLiveHoldingPart[];
+}
+
 export type OutcomeStatus = 'hit_target' | 'hit_stop' | 'held_range' | 'broke_range' | 'open';
 
 export interface AnalysisOutcome {

@@ -78,6 +78,7 @@ export function buildSharedSidebarTabs(params: {
             benchmark={env.benchmark}
             benchmarkError={env.benchmarkError}
             relvol={env.relvol}
+            cnLive={env.cnLive}
           />
           <FlowTab symbol={sym} />
         </>

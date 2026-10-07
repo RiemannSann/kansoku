@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import {
   CartesianGrid,
   Legend,
@@ -9,7 +10,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { BenchmarkSeries, CockpitPosition, RelativeVolume } from '@kansoku/shared/types';
+import type {
+  BenchmarkSeries,
+  CnLiveHolding,
+  CockpitPosition,
+  RelativeVolume,
+} from '@kansoku/shared/types';
 import * as stylex from '@stylexjs/stylex';
 import {
   hhmm,
@@ -19,7 +25,9 @@ import {
 } from '@web/features/charts/simple/theme';
 import { fmt, signed, upDown } from '@web/lib/format';
 import { Num, SectionTitle } from '@web/ui';
+import { marketOfSymbol } from '@web/lib/market';
 import { colors, fontSizes } from '../../theme/tokens.stylex';
+import { buildCnLiveView } from './cnLiveView';
 
 const styles = stylex.create({
   grid: {
@@ -135,6 +143,7 @@ interface EnvTabProps {
   benchmark: BenchmarkSeries[] | null;
   benchmarkError: string | null;
   relvol?: RelativeVolume | null;
+  cnLive?: CnLiveHolding | null;
 }
 
 function relvolTone(ratio: number): string {
@@ -149,9 +158,14 @@ export function EnvTab({
   benchmark,
   benchmarkError,
   relvol,
+  cnLive,
 }: EnvTabProps) {
   const relvolStatus = relvol ? relvolTone(relvol.ratio) : '';
   const positionStatus = position ? upDown(position.unrealized) : '';
+  // A 股：人民币、股；美股 / 港股保持原样
+  const cnPosition = position != null && marketOfSymbol(position.symbol) === 'CN';
+  const money = cnPosition ? '¥' : '$';
+  const cnView = cnLive ? buildCnLiveView(cnLive) : null;
 
   return (
     <>
@@ -160,9 +174,7 @@ export function EnvTab({
           <SectionTitle>量能对比（对齐前 {relvol.days_used} 日同时段）</SectionTitle>
           <div className={`grid2 ${stylex.props(styles.grid).className}`}>
             <div className={`k ${stylex.props(styles.key).className}`}>今天 vs 均值</div>
-            <div className={`v ${valueClassName(relvolStatus)}`}>
-              ×{relvol.ratio.toFixed(2)}
-            </div>
+            <div className={`v ${valueClassName(relvolStatus)}`}>×{relvol.ratio.toFixed(2)}</div>
             <div className={`k ${stylex.props(styles.key).className}`}>今日累计</div>
             <div className={`v ${valueClassName()}`}>
               {Math.round(relvol.today_cum).toLocaleString()}
@@ -179,11 +191,20 @@ export function EnvTab({
           <SectionTitle>持仓</SectionTitle>
           <div className={`grid2 ${stylex.props(styles.grid).className}`}>
             <div className={`k ${stylex.props(styles.key).className}`}>持仓</div>
-            <div className={`v ${valueClassName()}`}>{position.shares} sh</div>
+            <div className={`v ${valueClassName()}`}>
+              {position.shares}
+              {cnPosition ? ' 股' : ' sh'}
+            </div>
             <div className={`k ${stylex.props(styles.key).className}`}>成本</div>
-            <div className={`v ${valueClassName()}`}>${fmt(position.cost)}</div>
+            <div className={`v ${valueClassName()}`}>
+              {money}
+              {fmt(position.cost)}
+            </div>
             <div className={`k ${stylex.props(styles.key).className}`}>现价</div>
-            <div className={`v ${valueClassName()}`}>${fmt(position.last)}</div>
+            <div className={`v ${valueClassName()}`}>
+              {money}
+              {fmt(position.last)}
+            </div>
             <div className={`k ${stylex.props(styles.key).className}`}>
               浮{position.unrealized >= 0 ? '盈' : '亏'}
             </div>
@@ -215,6 +236,25 @@ export function EnvTab({
               </>
             )}
           </div>
+        </>
+      )}
+      {cnView && (
+        <>
+          <SectionTitle>实盘（StockSeller）</SectionTitle>
+          {cnView.note ? (
+            <div className={`note-block ${stylex.props(styles.note).className}`}>{cnView.note}</div>
+          ) : (
+            <div className={`grid2 ${stylex.props(styles.grid).className}`}>
+              {cnView.rows.map((row) => (
+                <Fragment key={row.label}>
+                  <div className={`k ${stylex.props(styles.key).className}`}>{row.label}</div>
+                  <div className={`v ${valueClassName(row.tone === 'flat' ? '' : row.tone)}`}>
+                    {row.shares} · 均价 {row.avgPx} · {row.notional} · {row.ret}
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+          )}
         </>
       )}
       {positionError && !position && (
