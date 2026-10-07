@@ -8,7 +8,7 @@ import {
   refreshBody,
 } from '../charts/build.js';
 import { getEventRisk } from '../marketdata/events.js';
-import { TIMEFRAME_ORDER } from '../analysis/intraday/constants.js';
+import { MACD_MIN_BARS, TIMEFRAME_ORDER } from '../analysis/intraday/constants.js';
 import { activeProDetectors } from '../pro/detectors.js';
 import { featureStateSync } from '../pro/features.js';
 import { getStream } from '../marketdata/registry.js';
@@ -61,7 +61,10 @@ export function tailFetchCount(
   fullCount = FULL_FETCH_COUNT,
 ): number {
   const elapsed = Math.max(0, now - lastFetchAt);
-  return Math.min(fullCount, Math.ceil(elapsed / TAIL_BASE_TF_MS) + TAIL_MARGIN_BARS);
+  // 补尾巴也是走 buildChart 整套重算，每个周期至少要 MACD_MIN_BARS 根，否则 coerceIntradayTimeframe 直接报错
+  // （600487.SH 缓存过 2.5 小时后补尾巴只拉 35 根，就是这样失败的；不是数据不够，是这里没兜底）
+  const tail = Math.ceil(elapsed / TAIL_BASE_TF_MS) + TAIL_MARGIN_BARS;
+  return Math.min(fullCount, Math.max(MACD_MIN_BARS, tail));
 }
 
 function chartIntervalMs(key?: string): number {
