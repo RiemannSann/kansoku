@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { SectorBoard, SectorStat } from '@kansoku/shared/types';
-import { breadthText, formatPct, pctTone, statTitle, watchSectors } from './sectorView';
+import {
+  bareCode,
+  breadthText,
+  childrenOf,
+  formatPct,
+  marketTotal,
+  pctTone,
+  sortSectors,
+  statTitle,
+  watchSectors,
+} from './sectorView';
 
 function stat(
   code: string,
@@ -35,6 +45,27 @@ const BOARD: SectorBoard = {
     '600519.SH': { l1: '801120.INDX', l2: '801125.INDX' },
   },
 };
+
+describe('sector ranking helpers', () => {
+  const a = stat('a', '甲', 1, { pct: 1, limitUp: 0, turnover: 5, up: 1, down: 3, flat: 0 });
+  const b = stat('b', '乙', 1, { pct: 2, limitUp: 4, turnover: 1, up: 3, down: 1, flat: 0 });
+  const c = stat('c', '丙', 1, { pct: null, limitUp: 1, turnover: 3, up: 0, down: 0, flat: 0 });
+
+  it('sorts by change, limit-ups, turnover or share of risers, unknowns last', () => {
+    expect(sortSectors([a, b, c], 'pct').map((s) => s.code)).toEqual(['b', 'a', 'c']);
+    expect(sortSectors([a, b, c], 'pct', 'asc').map((s) => s.code)).toEqual(['a', 'b', 'c']);
+    expect(sortSectors([a, b, c], 'limitUp').map((s) => s.code)).toEqual(['b', 'c', 'a']);
+    expect(sortSectors([a, b, c], 'turnover').map((s) => s.code)).toEqual(['a', 'c', 'b']);
+    expect(sortSectors([a, b, c], 'breadth').map((s) => s.code)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('adds up the whole market and finds level-2 children', () => {
+    const total = marketTotal([a, b, c]);
+    expect(total).toMatchObject({ up: 4, down: 4, limitUp: 5, turnover: 9 });
+    expect(childrenOf(BOARD, '801780.INDX').map((s) => s.name)).toEqual(['股份制银行Ⅱ']);
+    expect(bareCode('600519.SH')).toBe('600519');
+  });
+});
 
 describe('sectorView', () => {
   it('formats change and tone', () => {

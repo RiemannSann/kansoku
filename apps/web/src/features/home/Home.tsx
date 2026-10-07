@@ -32,6 +32,7 @@ import { QuickBar } from './QuickBar';
 import { RecapBoard } from './RecapBoard';
 import { SymbolGrid } from './SymbolGrid';
 import { WatchTable } from './WatchTable';
+import { SectorBoardPanel } from '../sectors/SectorBoardPanel';
 import { TrainerCard } from './TrainerCard';
 import { WatchBoard } from './WatchBoard';
 
@@ -231,6 +232,8 @@ export function Home() {
     <>
       <SectionTitleWithAge label="A 股自选" at={quotesSnapshotAt} />
       <WatchTable quotes={quoteSnap?.quotes ?? []} profiles={board?.profiles ?? {}} />
+      <SectionTitle variant="home">申万行业</SectionTitle>
+      <SectorBoardPanel />
     </>
   ) : null;
   const flowSection = (
