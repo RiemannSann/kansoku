@@ -92,9 +92,10 @@ async function refresh(symbol: string, state: State, withDays: boolean): Promise
     try {
       const provider = getProvider('CN');
       const [bars, days] = await Promise.all([
-        provider.getKline(symbol, '1m', MINUTE_BARS),
+        // 分时一律不复权：价格要和盘口、成交明细对得上
+        provider.getKline(symbol, '1m', MINUTE_BARS, undefined, 'none'),
         withDays || !state.dayCloses.length
-          ? provider.getKline(symbol, 'day', DAY_BARS)
+          ? provider.getKline(symbol, 'day', DAY_BARS, undefined, 'none')
           : Promise.resolve(null),
       ]);
       state.bars = bars;

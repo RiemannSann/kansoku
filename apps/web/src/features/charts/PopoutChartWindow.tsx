@@ -3,6 +3,7 @@ import { IntradayChartOnly, IntradayTimeframeSwitch } from './intraday/IntradayD
 import { ChartLayerMenu } from './intraday/ChartLayerMenu';
 import { MaLinesMenu } from './intraday/MaLinesMenu';
 import { withViewTimeframe } from './intraday/timeframes';
+import { useKlineAdjust } from './intraday/useKlineAdjust';
 import { useViewTimeframe } from './intraday/useViewTimeframe';
 import { IntradayControlsProvider } from './intraday/controlsContext';
 import { getShellRpc } from '../desktop/shellRpc';
@@ -58,7 +59,8 @@ export function PopoutChartWindow({ sym }: { sym: string }) {
   const { built, error, degraded, intradayTf, setIntradayTf } = useIntradayPreview(sym);
   const isDesktop = getShellRpc() !== null;
   useTitle(symLabel);
-  const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', { live: true });
+  const { adjust } = useKlineAdjust(sym);
+  const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', { live: true, adjust });
   const activeTf = built ? resolveIntradayTf(built, intradayTf) : null;
   const chartBuilt =
     built && activeTf ? withViewTimeframe(built, activeTf, viewTimeframe.tf) : built;

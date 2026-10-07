@@ -1,4 +1,4 @@
-import type { MacroEventItem, NewsItem, RawBar } from '@kansoku/shared/types';
+import type { KlineAdjust, MacroEventItem, NewsItem, RawBar } from '@kansoku/shared/types';
 import type { FlowRow } from '../analysis/simple.js';
 import type { Market } from '../symbols/symbol.utils.js';
 
@@ -101,7 +101,14 @@ export type Capability =
 export interface MarketDataProvider {
   readonly name: string;
   readonly capabilities: ReadonlySet<Capability>;
-  getKline(symbol: string, period: string, count: number, session?: string): Promise<RawBar[]>;
+  /** adjust 只有 A 股（米筐）认：前复权 pre（默认）/ 不复权 none / 后复权 post；长桥忽略 */
+  getKline(
+    symbol: string,
+    period: string,
+    count: number,
+    session?: string,
+    adjust?: KlineAdjust,
+  ): Promise<RawBar[]>;
   getQuotes(symbols: string[]): Promise<RawQuote[]>;
   getSecurityName?(symbol: string): Promise<string | null>;
   getNews(symbol: string, limit?: number): Promise<NewsItem[]>;

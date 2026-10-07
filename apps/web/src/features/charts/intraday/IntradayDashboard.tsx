@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { IntradayBuilt, TimeframeKey } from '@kansoku/shared/types';
+import type { IntradayBuilt, KlineAdjust, TimeframeKey } from '@kansoku/shared/types';
 import * as stylex from '@stylexjs/stylex';
 import type { SidebarTab } from '../SidebarTabs';
 import type { ConclusionReassess } from './ConclusionCard';
@@ -7,6 +7,7 @@ import { IntradayChartOnly } from './IntradayChartOnly';
 import { IntradaySidebar } from './IntradaySidebar';
 import { useIntradayControls } from './controlsContext';
 import { TimeframeSettingsMenu } from './TimeframeSettingsMenu';
+import { ADJUST_OPTIONS } from './useKlineAdjust';
 import { isViewPeriod, tfLabel, tfShortLabel, type ChartTf } from './timeframes';
 import { colors, fontSizes, radii, sizes } from '../../../theme/tokens.stylex';
 
@@ -51,6 +52,13 @@ const styles = stylex.create({
     color: colors.textPrimary,
     backgroundColor: colors.backgroundHover,
   },
+  adjustDivider: {
+    alignSelf: 'center',
+    backgroundColor: colors.border,
+    height: '12px',
+    margin: '0 2px',
+    width: '1px',
+  },
 });
 
 export { IntradayChartOnly } from './IntradayChartOnly';
@@ -77,11 +85,14 @@ export function IntradayTimeframeSwitch({
   activeTf,
   onChange,
   timeshare,
+  adjust,
 }: {
   activeTf: ChartTf;
   onChange: (tf: ChartTf) => void;
   /** A 股才有：最前面加一个「分时」按钮；分时打开时 K 线周期都不高亮 */
   timeshare?: { active: boolean; onSelect: () => void };
+  /** A 股才有：复权方式。只在日 / 周 / 月等现拉的周期显示（5/15/60 分钟固定前复权，分时不复权） */
+  adjust?: { value: KlineAdjust; onChange: (next: KlineAdjust) => void };
 }) {
   const { visibleTfs } = useIntradayControls();
   const tfActive = (k: ChartTf) => !timeshare?.active && k === activeTf;
@@ -117,6 +128,27 @@ export function IntradayTimeframeSwitch({
           {tfShortLabel(k)}
         </button>
       ))}
+      {adjust && !timeshare?.active && isViewPeriod(activeTf) && (
+        <>
+          <span {...stylex.props(styles.adjustDivider)} aria-hidden />
+          {ADJUST_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={
+                stylex.props(
+                  styles.timeframeButton,
+                  adjust.value === opt.value && styles.timeframeButtonActive,
+                ).className
+              }
+              aria-pressed={adjust.value === opt.value}
+              onClick={() => adjust.onChange(opt.value)}
+              title={opt.title}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </>
+      )}
       <TimeframeSettingsMenu />
     </div>
   );

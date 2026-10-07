@@ -1,4 +1,4 @@
-import type { NewsItem, RawBar } from '@kansoku/shared/types';
+import type { KlineAdjust, NewsItem, RawBar } from '@kansoku/shared/types';
 import { ClientError } from '../platform/errors.js';
 import type { FlowRow } from '../analysis/simple.js';
 import { readCnWatchlist } from './cnWatchlist.js';
@@ -138,12 +138,19 @@ export function createRicequantProvider(
     name: 'ricequant',
     capabilities: new Set(['flow', 'market-cap', 'watchlist']),
 
-    async getKline(symbol: string, period: string, count: number): Promise<RawBar[]> {
+    async getKline(
+      symbol: string,
+      period: string,
+      count: number,
+      _session?: string,
+      adjust?: KlineAdjust,
+    ): Promise<RawBar[]> {
       const normalized = normalizePeriod(period);
       const rows = await request<BridgeBar[]>('kline', 'kline', {
         symbol,
         period: normalized,
         count: guard ? guard.klineCount(count) : count,
+        ...(adjust && adjust !== 'pre' ? { adjust } : {}),
       });
       return toRawBars(rows, normalized);
     },

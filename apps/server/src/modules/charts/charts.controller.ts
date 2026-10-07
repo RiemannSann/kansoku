@@ -38,6 +38,7 @@ export class ChartsController {
       period: query.period ?? '',
       count: query.count,
       as_of: query.as_of,
+      adjust: query.adjust,
     });
     return { ok: true, data };
   }

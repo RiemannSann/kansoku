@@ -116,7 +116,10 @@ def latest_trading_day() -> date:
     return rq.get_previous_trading_date(today)
 
 
-def fetch_bars(order_book_id: str, frequency: str, count: int):
+ADJUST_TYPES = {"pre", "none", "post"}
+
+
+def fetch_bars(order_book_id: str, frequency: str, count: int, adjust: str = "pre"):
     end = latest_trading_day()
     if frequency in BARS_PER_DAY:
         days = math.ceil(count / BARS_PER_DAY[frequency]) + 1
@@ -133,7 +136,7 @@ def fetch_bars(order_book_id: str, frequency: str, count: int):
         start_date=start,
         end_date=end,
         frequency=fetch_freq,
-        adjust_type="pre",
+        adjust_type=adjust,
         expect_df=True,
     )
     if df is None or df.empty:
@@ -200,7 +203,11 @@ def m_kline(params):
     if not frequency:
         raise ValueError(f"米筐不支持的周期 {period}")
     count = max(1, min(int(params.get("count", 200)), 5000))
-    return fetch_bars(to_rq(params["symbol"]), frequency, count)
+    # 复权：pre 前复权（默认，和同花顺一样）/ none 不复权 / post 后复权
+    adjust = str(params.get("adjust") or "pre")
+    if adjust not in ADJUST_TYPES:
+        raise ValueError(f"不支持的复权方式 {adjust}")
+    return fetch_bars(to_rq(params["symbol"]), frequency, count, adjust)
 
 
 def m_snapshot(params):

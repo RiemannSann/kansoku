@@ -26,19 +26,42 @@ function bars(count: number, startMs = Date.parse('2026-07-20T11:00:00.000Z')): 
   });
 }
 
-let fetched: { symbol: string; period: string; count: number; session?: string }[] = [];
+let fetched: {
+  symbol: string;
+  period: string;
+  count: number;
+  session?: string;
+  adjust?: string;
+}[] = [];
 
 beforeEach(() => {
   fetched = [];
   provider.getKline = vi.fn(
-    async (symbol: string, period: string, count: number, session?: string) => {
-      fetched.push({ symbol, period, count, session });
+    async (symbol: string, period: string, count: number, session?: string, adjust?: string) => {
+      fetched.push({ symbol, period, count, session, adjust });
       return bars(300);
     },
   );
 });
 
 describe('buildViewTimeframe', () => {
+  it('passes the A-share adjust choice through and caches each choice separately', async () => {
+    const none = await buildViewTimeframe({ symbol: '600487.SH', period: 'day', adjust: 'none' });
+    const pre = await buildViewTimeframe({ symbol: '600487.SH', period: 'day' });
+    const post = await buildViewTimeframe({ symbol: '600487.SH', period: 'day', adjust: 'post' });
+    expect([none.adjust, pre.adjust, post.adjust]).toEqual(['none', 'pre', 'post']);
+    expect(fetched.map((f) => f.adjust)).toEqual(['none', 'pre', 'post']);
+  });
+
+  it('ignores adjust outside A-shares and rejects unknown values', async () => {
+    const us = await buildViewTimeframe({ symbol: 'ADJ.US', period: 'day', adjust: 'none' });
+    expect(us.adjust).toBe('pre');
+    expect(fetched.at(-1)?.adjust).toBe('pre');
+    await expect(
+      buildViewTimeframe({ symbol: '600487.SH', period: 'day', adjust: 'qfq' }),
+    ).rejects.toThrow(/unsupported adjust/);
+  });
+
   it('rejects periods outside the view-only whitelist', async () => {
     await expect(buildViewTimeframe({ symbol: 'NVDA.US', period: 'm5' })).rejects.toThrow(
       /unsupported period/,

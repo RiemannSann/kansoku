@@ -51,6 +51,22 @@ describe('applyLiveQuote', () => {
 });
 
 describe('useViewTimeframe', () => {
+  it('asks for the chosen A-share adjust and refetches when it changes', async () => {
+    const { rerender } = renderHook(
+      ({ adjust }: { adjust: 'pre' | 'none' }) => useViewTimeframe('600487.SH', 'day', { adjust }),
+      { initialProps: { adjust: 'pre' as 'pre' | 'none' } },
+    );
+    await waitFor(() => expect(viewTimeframe).toHaveBeenCalledTimes(1));
+    expect(viewTimeframe.mock.calls[0]![0]).toEqual({ symbol: '600487.SH', period: 'day' });
+    rerender({ adjust: 'none' });
+    await waitFor(() => expect(viewTimeframe).toHaveBeenCalledTimes(2));
+    expect(viewTimeframe.mock.calls[1]![0]).toEqual({
+      symbol: '600487.SH',
+      period: 'day',
+      adjust: 'none',
+    });
+  });
+
   it('does not fetch for analysis timeframes', () => {
     const { result } = renderHook(() => useViewTimeframe('NVDA.US', 'm15'));
 

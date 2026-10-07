@@ -1,4 +1,4 @@
-import type { IntradayTfData, RawBar } from '@kansoku/shared/types';
+import type { IntradayTfData, KlineAdjust, RawBar } from '@kansoku/shared/types';
 import { ClientError } from '../platform/errors.js';
 import { MACD_MIN_BARS } from '../analysis/intraday/constants.js';
 import { buildTimeframeView } from '../analysis/intraday/orchestrator.js';
@@ -26,8 +26,23 @@ function cacheFresh(symbol: string, period: ViewPeriod, at: number, now: number)
   return cnCacheFresh(at, now, activeTtl, CN_QUIET_TTL_MS);
 }
 
+const ADJUSTS: readonly KlineAdjust[] = ['pre', 'none', 'post'];
+
+/** 复权只对 A 股有意义（米筐）；别的市场一律按 pre 处理，避免同一份数据缓存三遍 */
+function parseAdjust(symbol: string, raw: string | undefined): KlineAdjust {
+  if (raw == null || raw === '') return 'pre';
+  if (!(ADJUSTS as readonly string[]).includes(raw)) {
+    throw new ClientError(
+      `view-timeframe: unsupported adjust ${JSON.stringify(raw)}`,
+      `adjust must be one of ${ADJUSTS.join(' | ')}`,
+    );
+  }
+  return marketOf(symbol) === 'CN' ? (raw as KlineAdjust) : 'pre';
+}
+
 export interface ViewTimeframeResult {
   period: ViewPeriod;
+  adjust: KlineAdjust;
   bars: number;
   tf: IntradayTfData;
 }
@@ -56,6 +71,7 @@ export async function buildViewTimeframe(input: {
   period: string;
   count?: number | string;
   as_of?: string;
+  adjust?: string;
 }): Promise<ViewTimeframeResult> {
   const symbol = input.symbol;
   if (!symbol) throw new ClientError('view-timeframe: `symbol` is required');
@@ -68,13 +84,14 @@ export async function buildViewTimeframe(input: {
   const period = input.period;
   const count = clampCount(input.count);
   const asOf = input.as_of;
+  const adjust = parseAdjust(symbol, input.adjust);
 
-  const key = `${symbol}|${period}|${count}|${asOf ?? ''}`;
+  const key = `${symbol}|${period}|${count}|${asOf ?? ''}|${adjust}`;
   const hit = cache.get(key);
   if (hit && cacheFresh(symbol, period, hit.at, Date.now())) return hit.value;
 
   const bars = truncateAt(
-    await getProvider(marketOf(symbol)).getKline(symbol, period, count, 'all'),
+    await getProvider(marketOf(symbol)).getKline(symbol, period, count, 'all', adjust),
     asOf,
   );
   if (bars.length < MACD_MIN_BARS) {
@@ -91,6 +108,7 @@ export async function buildViewTimeframe(input: {
   const coerced = coerceIntradayTimeframe(bars, period, undefined, marketOf(symbol));
   const value: ViewTimeframeResult = {
     period,
+    adjust,
     bars: bars.length,
     tf: buildTimeframeView(coerced, period, symbol),
   };

@@ -87,6 +87,8 @@ describe('timeshare channel', () => {
     const first = JSON.parse(got.at(-1)!).data;
     expect(first).toMatchObject({ date: '2026-09-30', prevClose: 100, partial: false });
     expect(first.points.map((p: { slot: number }) => p.slot)).toEqual([0, 1]);
+    // 分时不复权
+    for (const args of mocks.provider.getKline.mock.calls) expect(args[4]).toBe('none');
 
     for (const l of mocks.listeners) l(cell('2026-09-30T09:32:10', 103, 1600));
     await vi.advanceTimersByTimeAsync(1_000);

@@ -18,6 +18,8 @@ export interface ChartBuiltResult {
 
 export interface ChartViewTimeframeResult {
   period: string;
+  /** 实际用的复权方式（非 A 股总是 pre） */
+  adjust: string;
   bars: number;
   tf: unknown;
 }
@@ -45,6 +47,8 @@ export interface ChartsApi {
     period: string;
     count?: number | string;
     as_of?: string;
+    /** A 股复权：pre（默认）/ none / post */
+    adjust?: string;
   }): Promise<ChartViewTimeframeResult>;
 }
 

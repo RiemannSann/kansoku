@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { IntradayTfData } from '@kansoku/shared/types';
+import type { IntradayTfData, KlineAdjust } from '@kansoku/shared/types';
 import { client } from '@web/lib/client';
 import { isViewPeriod, type ChartTf } from './timeframes';
 
@@ -14,9 +14,9 @@ export interface ViewTimeframeState {
 export function useViewTimeframe(
   symbol: string,
   activeTf: ChartTf,
-  options: { asOf?: string; live?: boolean } = {},
+  options: { asOf?: string; live?: boolean; adjust?: KlineAdjust } = {},
 ): ViewTimeframeState {
-  const { asOf, live = false } = options;
+  const { asOf, live = false, adjust = 'pre' } = options;
   const [state, setState] = useState<ViewTimeframeState>({ tf: null, error: null, loading: false });
   const wanted = isViewPeriod(activeTf) ? activeTf : null;
   const tokenRef = useRef<object | null>(null);
@@ -35,7 +35,12 @@ export function useViewTimeframe(
 
     const fetchOnce = () => {
       client.charts
-        .viewTimeframe({ symbol, period: wanted, ...(asOf ? { as_of: asOf } : {}) })
+        .viewTimeframe({
+          symbol,
+          period: wanted,
+          ...(asOf ? { as_of: asOf } : {}),
+          ...(adjust !== 'pre' ? { adjust } : {}),
+        })
         .then((result) => {
           if (cancelled || tokenRef.current !== token) return;
           setState({ tf: result.tf as IntradayTfData, error: null, loading: false });
@@ -57,7 +62,7 @@ export function useViewTimeframe(
       cancelled = true;
       clearInterval(timer);
     };
-  }, [symbol, wanted, asOf, live]);
+  }, [symbol, wanted, asOf, live, adjust]);
 
   return state;
 }

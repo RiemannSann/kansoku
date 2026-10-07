@@ -28,6 +28,7 @@ import { conclusionOutdated } from '../charts/intraday/ConclusionCard';
 import { PredictionTab } from '../charts/intraday/tabs/PredictionTab';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
 import { TimeshareChart } from '../charts/timeshare/TimeshareChart';
+import { useKlineAdjust } from '../charts/intraday/useKlineAdjust';
 import { useTimeshareMode } from '../charts/timeshare/useTimeshareMode';
 import { buildDepthTabs, buildSharedSidebarTabs, defaultSidebarTab } from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
@@ -236,9 +237,11 @@ export function SymbolCockpit({ sym }: { sym: string }) {
 
   const intradaySidebar = doc?.built.kind === 'intraday' ? doc.built.sidebar : null;
   const cnName = cnSymbolName(sym, intradaySidebar?.name);
+  const klineAdjust = useKlineAdjust(sym);
   const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', {
     asOf: live ? undefined : intradaySidebar?.asOf,
     live,
+    adjust: klineAdjust.adjust,
   });
   const reassessNow = Date.now();
   const reassessNeeded =
@@ -401,6 +404,11 @@ export function SymbolCockpit({ sym }: { sym: string }) {
                 timeshare={
                   timeshare.available
                     ? { active: timeshare.active, onSelect: () => timeshare.setActive(true) }
+                    : undefined
+                }
+                adjust={
+                  klineAdjust.available
+                    ? { value: klineAdjust.adjust, onChange: klineAdjust.setAdjust }
                     : undefined
                 }
               />

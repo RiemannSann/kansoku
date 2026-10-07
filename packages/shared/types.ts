@@ -748,6 +748,9 @@ export interface QuoteDepth {
   auction: boolean;
 }
 
+/** A 股 K 线复权方式：前复权（默认，和同花顺一样）/ 不复权 / 后复权 */
+export type KlineAdjust = 'pre' | 'none' | 'post';
+
 /** 分时图的一个点 = 一分钟 */
 export interface TimesharePoint {
   /** 0–239：09:30–11:30 是 0–119，13:00–15:00 是 120–239（09:25 竞价成交并进第 0 分钟） */

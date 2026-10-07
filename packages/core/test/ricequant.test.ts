@@ -114,6 +114,13 @@ describe('ricequant provider', () => {
     const provider = createRicequantProvider(call);
     const bars = await provider.getKline('600519.SH', '60m', 2);
     expect(call).toHaveBeenCalledWith('kline', { symbol: '600519.SH', period: '1h', count: 2 });
+    await provider.getKline('600519.SH', 'day', 2, undefined, 'none');
+    expect(call).toHaveBeenLastCalledWith('kline', {
+      symbol: '600519.SH',
+      period: 'day',
+      count: 2,
+      adjust: 'none',
+    });
     expect(bars).toEqual([
       {
         time: iso('2026-09-30 14:00:00'),

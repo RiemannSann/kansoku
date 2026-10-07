@@ -31,6 +31,7 @@ import { GenerateAnalysis } from './GenerateAnalysis';
 import { GenerateAnalysisCta } from './GenerateAnalysisCta';
 import { EventCanvasHost } from '@web/features/events/EventCanvasHost';
 import { TimeshareChart } from '../charts/timeshare/TimeshareChart';
+import { useKlineAdjust } from '../charts/intraday/useKlineAdjust';
 import { useTimeshareMode } from '../charts/timeshare/useTimeshareMode';
 import { buildDepthTabs, buildSharedSidebarTabs, defaultSidebarTab } from './sharedSidebarTabs';
 import { useAiUnreadBadge } from './useAiUnreadBadge';
@@ -158,7 +159,11 @@ export function PreviewCockpit({
   const timeshare = useTimeshareMode(sym);
   const { comments, error: commentsError, loaded: commentsLoaded } = useCockpitComments(sym);
   const { unread } = useAiUnreadBadge(sym, comments, commentsLoaded, activeTab);
-  const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', { live: true });
+  const klineAdjust = useKlineAdjust(sym);
+  const viewTimeframe = useViewTimeframe(sym, intradayTf ?? 'm15', {
+    live: true,
+    adjust: klineAdjust.adjust,
+  });
   const analystRunStatus = useAnalystRunStatus(sym);
   const analystRunLastEndedRaw = useAnalystRunLastEnded(sym);
   const analystRunLastEnded =
@@ -277,6 +282,11 @@ export function PreviewCockpit({
                 timeshare={
                   timeshare.available
                     ? { active: timeshare.active, onSelect: () => timeshare.setActive(true) }
+                    : undefined
+                }
+                adjust={
+                  klineAdjust.available
+                    ? { value: klineAdjust.adjust, onChange: klineAdjust.setAdjust }
                     : undefined
                 }
               />
