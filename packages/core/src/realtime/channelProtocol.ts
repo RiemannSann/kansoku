@@ -20,7 +20,9 @@ import { subscribePosition } from './position.js';
 import { subscribeQuotes } from './quotes.js';
 import { subscribeTimeshare } from './timeshare.js';
 
-const MAX_CHANNELS_PER_SOCKET = 16;
+// 网页整页共用一条连接：A 股个股页（盘口、分时、行业……）一页就要 20 多个频道，
+// 16 个的老上限会把后订阅的（标注、行业）悄悄丢掉。上限只防失控，超了要明说
+export const MAX_CHANNELS_PER_SOCKET = 64;
 
 const STATIC_KINDS = [
   'quotes',
@@ -220,7 +222,18 @@ export function handleConnection(conn: Connection): void {
       subs.delete(msg.key);
       return;
     }
-    if (subs.has(msg.key) || subs.size >= MAX_CHANNELS_PER_SOCKET) return;
+    if (subs.has(msg.key)) return;
+    if (subs.size >= MAX_CHANNELS_PER_SOCKET) {
+      send(
+        msg.key,
+        JSON.stringify({
+          type: 'status',
+          degraded: true,
+          error: `too many channels on one connection (max ${MAX_CHANNELS_PER_SOCKET})`,
+        }),
+      );
+      return;
+    }
     subs.set(msg.key, () => {});
     try {
       const unsub = await attachChannel(msg, (envelope) => send(msg.key, envelope));
